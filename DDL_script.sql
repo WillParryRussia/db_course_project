@@ -8,7 +8,6 @@ CREATE TABLE `users` (
 	`uid` VARCHAR(16) NOT NULL COMMENT 'Уникальный идентификатор пользователя на сайте (никнейм)',
     `email` VARCHAR(128) NOT NULL COMMENT 'Почтовый адрес пользователя',
     `phone` BIGINT UNSIGNED NOT NULL COMMENT 'Номер мобильного телефона пользователя',
-    `preferences` JSON COMMENT 'Личные настройки пользователя',
     `password_hash` VARCHAR(256) NOT NULL COMMENT 'Основной хэш пароля',
     `password_hash2` VARCHAR(256) NOT NULL COMMENT 'Дополнительный хэш пароля (для смены пароля)',
     `is_banned` BIT(1) NOT NULL DEFAULT 0 COMMENT 'Является ли пользователь забанненым на сайте',
@@ -22,6 +21,7 @@ CREATE TABLE `users` (
 #DROP TABLE IF EXISTS `profiles`;
 CREATE TABLE `profiles` (
 	`user_id` VARCHAR(16) NOT NULL COMMENT 'Внешний ключ на идентификатор пользователя, отношение таблиц 1 х 1',
+    `preferences` JSON COMMENT 'Личные настройки пользователя',
     `firstname` VARCHAR(32) DEFAULT NULL COMMENT 'Имя пользователя (при желании)',
     `lastname` VARCHAR(32) DEFAULT NULL COMMENT 'Фамилия пользователя (при желании)',
     `sex` ENUM('M','F') DEFAULT NULL COMMENT 'Пол пользователя (при желании). Не гендер!',
@@ -60,7 +60,7 @@ CREATE TABLE `communities` (
     `cover` VARCHAR(128) NOT NULL DEFAULT 'empty_comm_cover' COMMENT 'Обложка профиля сообщества',
     `slogan` VARCHAR(256) DEFAULT NULL COMMENT 'Небольшое текстовое описание',
     `amount_posts` BIGINT NOT NULL DEFAULT 0 COMMENT 'Количество постов в сообществе. ТРИГГЕР из таблицы posts',
-    `amount_members` BIGINT UNSIGNED NOT NULL DEFAULT 0 COMMENT 'Количество членов. ТРИГГЕР из таблицы subscribers',
+    `amount_members` BIGINT UNSIGNED NOT NULL DEFAULT 0 COMMENT 'Количество членов. ТРИГГЕР из таблицы users_communities',
     `description` VARCHAR(1000) NOT NULL DEFAULT 'Community Description Area' COMMENT 'Полнотекстовое описание сообщества',
     `administrator_id` VARCHAR(16) NOT NULL COMMENT 'Идентификатор пользователя-администратора сообщества, отношение 1 х М',
     `moderator_id` VARCHAR(16) DEFAULT NULL COMMENT 'Идентификатор пользователя-модератора сообщества, отношение 1 х М',
@@ -233,7 +233,7 @@ CREATE TABLE `content` (
 	`coid` SERIAL COMMENT 'Идентификатор контекста',
     `post_id` BIGINT UNSIGNED DEFAULT NULL COMMENT 'Идентификатор поста, если этот контент относится к посту',
     `comment_id` BIGINT UNSIGNED DEFAULT NULL COMMENT 'Идентификатор коммента, если этот контент относится к комменту',
-    `content_type` ENUM('T','P','V') NOT NULL COMMENT 'Тип контента, T - текст, P - пикча, V - видео',
+    `content_type_id` ENUM('T','V','P') NOT NULL COMMENT 'Тип контента, T - текст, P - пикча, V - видео',
     `assembly_number` SMALLINT NOT NULL COMMENT 'Сборочный номер, чтобы расположить контент в верном порядке',
     `metadata` JSON NOT NULL COMMENT 'Разные метаданные для файла',
     `body` VARCHAR(5000) DEFAULT NULL COMMENT 'Содержимое контента, если тип Т',
@@ -266,127 +266,250 @@ CREATE TABLE `assessments` (
 		FOREIGN KEY (`comment_id`) REFERENCES `comments`(`cuid`)
 			ON UPDATE CASCADE
             ON DELETE CASCADE
-)
-##########################
-DELIMITER |
-CREATE TRIGGER `insert_profiles` AFTER INSERT ON `users`
-	FOR EACH ROW
-		BEGIN
-			INSERT INTO `profiles` (`user_id`) VALUES (NEW.uid);
-		END;
-CREATE TRIGGER `update_profiles1` AFTER INSERT ON `subscribers`
-	FOR EACH ROW
-		BEGIN
-			UPDATE `profiles`
-				SET `subscribers` = `subscribers` + 1 
-                WHERE `user_id` = NEW.`target_user_id`;
-		END;
-CREATE TRIGGER `update_profiles2` BEFORE DELETE ON `subscribers`
-	FOR EACH ROW
-		BEGIN
-			UPDATE `profiles`
-				SET `subscribers` = `subscribers` - 1 
-                WHERE `user_id` = OLD.`target_user_id`;
-        END;
-CREATE TRIGGER `update_communities` AFTER INSERT ON `communities_users`
-	FOR EACH ROW
-		BEGIN
-			UPDATE `communities` 
-				SET `amount_members` = `amount_members` + 1 WHERE `cid` = NEW.`community_id`;
-		END;
-| DELIMITER ;
-
--- tests
-USE `course_project`;
-INSERT INTO `users` (`uid`,`email`,`phone`,`password_hash`,`password_hash2`) VALUES
-	('willparry', 'lordgeralt@mail.ru', 79040459833, '123@@@AS3', '123@@#DDD'),
-    ('nickname1', 'nickname1@mail.ru', 79040459834, '123@@@AS3', '123@@#DDD'),
-    ('nickname2', 'nickname2@mail.ru', 79040459835, '123@@@AS3', '123@@#DDD'),
-    ('nickname3', 'nickname3@mail.ru', 79040459836, '123@@@AS3', '123@@#DDD'),
-    ('nickname4', 'nickname4@mail.ru', 79040459837, '123@@@AS3', '123@@#DDD');
-SELECT * FROM `users`;
-SELECT `user_id`, `subscribers` FROM `profiles`;
-
-INSERT INTO `subscribers` (`initiator_user_id`, `target_user_id`) VALUES
-	('nickname1', 'willparry'),
-    ('nickname2', 'willparry'),
-    ('nickname1', 'nickname3'),
-    ('nickname2', 'nickname4');
-# wp : 2
-# n1 : 0
-# n2 : 0
-# n3 : 1
-# n4 : 1
-
-DELETE FROM `subscribers` 
-	WHERE `initiator_user_id` = 'nickname1' AND `target_user_id` = 'nickname3';
-
-INSERT INTO `users` (`uid`,`email`,`phone`,`password_hash`,`password_hash2`) VALUES
-	('willparry', 'email', '777', '123', '123');
-INSERT INTO `communities` (`administrator_id`, `cid`) VALUES
-	('willparry', 'community');
-INSERT INTO `posts` (`header`, `author_id`) VALUES
-	('New post', 'willparry');
-INSERT INTO `comments` (`post_id`, `user_id`) VALUES
-	(1, 'willparry');
-INSERT INTO `content` (`post_id`, `assembly_number`, `content_type`, `metadata`, `filename`) VALUES
-    (1, 1, 'P', '{}', 'cat.jpg');
-INSERT INTO `content` (`comment_id`, `assembly_number`, `content_type`, `metadata`, `body`) VALUES
-    (1, 1, 'T', '{}', 'Ipsum dolor si amet');
-    
-SELECT * FROM users;
-SELECT * FROM profiles;
-SELECT * FROM communities;
-SELECT * FROM posts;
-SELECT * FROM comments;
-SELECT * FROM content;
+);
+-- -------------------------------
 
 
-# DML-part
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
--- TRIGGERS !!!
-#DROP TABLE IF EXISTS `p`;
-#DROP TABLE IF EXISTS `u`;
-#CREATE TABLE `u` (`uid` SERIAL, `name` VARCHAR(128) NOT NULL, `karma` INT DEFAULT 0, PRIMARY KEY (`uid`));
-#CREATE TABLE `p` (`pid` SERIAL, `author_uid` BIGINT UNSIGNED NOT NULL, `rating` INT NOT NULL, PRIMARY KEY (`pid`), CONSTRAINT FOREIGN KEY (`author_uid`) REFERENCES `u`(`uid`));
-#DELIMITER |
-#CREATE TRIGGER `update_karma` BEFORE INSERT ON `p`
-#	FOR EACH ROW
-#		BEGIN
-#			UPDATE `u` SET `karma` = `karma` + NEW.`rating` WHERE `uid` = NEW.`author_uid`;
-#		END;
-#| DELIMITER ;
-#INSERT IGNORE INTO `u` (`name`) VALUES ('John'), ('Peter'), ('Sophie');
-#INSERT IGNORE INTO `p` (`author_uid`, `rating`) VALUES
-#	(1, 100),
-#	(1, 200),
-#   (2, -100),
-#   (2, -300);
-    
-# 300  - 1
-# -400 - 2
-# 0    - 3
-#SELECT * FROM `u`;
+-- http://filldb.info/dummy/step2/users
+CREATE TABLE `users` (
+    `uid` VARCHAR(16) NOT NULL,
+    `email` VARCHAR(128) NOT NULL,
+    `phone` BIGINT UNSIGNED NOT NULL,
+    `password_hash` VARCHAR(256) NOT NULL,
+    `password_hash2` VARCHAR(256) NOT NULL,
+    `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP(),
+    PRIMARY KEY (`uid`),
+    UNIQUE INDEX (`email`),
+    UNIQUE INDEX (`phone`)
+);
+CREATE TABLE `profiles` (
+    `user_id` VARCHAR(16) NOT NULL,
+    `preferences` JSON,
+    `firstname` VARCHAR(32) DEFAULT NULL,
+    `lastname` VARCHAR(32) DEFAULT NULL,
+    `sex` ENUM('M','F') DEFAULT NULL,
+    `birthday` DATE DEFAULT NULL,
+    `subscribers` BIGINT UNSIGNED NOT NULL DEFAULT 0,
+    `avatar` VARCHAR(128) NOT NULL DEFAULT 'empty_user_avatar',
+    `cover` VARCHAR(128) NOT NULL DEFAULT 'empty_user_cover',
+    `slogan` VARCHAR(256) DEFAULT NULL,
+    PRIMARY KEY (`user_id`),
+    CONSTRAINT
+		FOREIGN KEY (`user_id`) REFERENCES `users`(`uid`)
+			ON UPDATE CASCADE
+            ON DELETE NO ACTION
+);
+CREATE TABLE `subscribers` (
+	`initiator_user_id` VARCHAR(16) NOT NULL,
+    `target_user_id` VARCHAR(16) NOT NULL,
+    `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP(),
+    PRIMARY KEY (`initiator_user_id`, `target_user_id`),
+    CONSTRAINT
+		FOREIGN KEY (`initiator_user_id`) REFERENCES `users`(`uid`)
+			ON UPDATE CASCADE
+            ON DELETE NO ACTION,
+		FOREIGN KEY (`target_user_id`) REFERENCES `users`(`uid`)
+			ON UPDATE CASCADE
+            ON DELETE NO ACTION
+);
+CREATE TABLE `communities` (
+	`cid` VARCHAR(32) NOT NULL,
+    `rating` BIGINT NOT NULL DEFAULT 0,
+    `avatar` VARCHAR(128) NOT NULL DEFAULT 'empty_comm_avatar',
+    `cover` VARCHAR(128) NOT NULL DEFAULT 'empty_comm_cover',
+    `slogan` VARCHAR(256) DEFAULT NULL,
+    `description` VARCHAR(1000) NOT NULL DEFAULT 'CDA',
+    `administrator_id` VARCHAR(16) NOT NULL,
+    `moderator_id` VARCHAR(16) DEFAULT NULL,
+    `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP(),
+    PRIMARY KEY (`cid`),
+    INDEX (`rating`),
+    CONSTRAINT
+		FOREIGN KEY (`administrator_id`) REFERENCES `users`(`uid`)
+			ON UPDATE CASCADE
+            ON DELETE NO ACTION,
+		FOREIGN KEY (`moderator_id`) REFERENCES `users`(`uid`)
+			ON UPDATE CASCADE
+            ON DELETE NO ACTION
+);
+CREATE TABLE `communities_users` (
+	`community_id` VARCHAR(32) NOT NULL,
+    `member_id` VARCHAR(16) NOT NULL,
+    PRIMARY KEY (`community_id`,`member_id`),
+    CONSTRAINT
+		FOREIGN KEY (`community_id`) REFERENCES `communities`(`cid`)
+			ON UPDATE CASCADE
+            ON DELETE CASCADE,
+		FOREIGN KEY (`member_id`) REFERENCES `users`(`uid`)
+			ON UPDATE CASCADE
+            ON DELETE CASCADE
+);
+CREATE TABLE `achievements` (
+	`aid` SERIAL,
+    `name` VARCHAR(128) NOT NULL,
+    PRIMARY KEY (`aid`),
+    UNIQUE INDEX (`name`)
+);
+CREATE TABLE `users_achievements` (
+	`uaid` SERIAL,
+    `user_id` VARCHAR(16) NOT NULL,
+    `achievement_id` BIGINT UNSIGNED NOT NULL,
+    `description` VARCHAR(128) NOT NULL,
+    `reached_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP(),
+    PRIMARY KEY (`uaid`),
+    INDEX (`user_id`),
+    CONSTRAINT
+		FOREIGN KEY (`user_id`) REFERENCES `users`(`uid`)
+			ON UPDATE CASCADE
+            ON DELETE NO ACTION,
+        FOREIGN KEY (`achievement_id`) REFERENCES `achievements`(`aid`)
+			ON UPDATE CASCADE
+            ON DELETE NO ACTION
+);
+#DROP TABLE IF EXISTS `users_notes`;
+CREATE TABLE `users_notes` (
+	`author_user_id` VARCHAR(16) NOT NULL,
+    `target_user_id` VARCHAR(16) NOT NULL,
+    `body` VARCHAR(128),
+    `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP(),
+    `updated_at` DATETIME ON UPDATE CURRENT_TIMESTAMP(),
+    PRIMARY KEY (`author_user_id`, `target_user_id`),
+    CONSTRAINT
+		FOREIGN KEY (`author_user_id`) REFERENCES `users`(`uid`)
+			ON UPDATE CASCADE
+            ON DELETE NO ACTION,
+        FOREIGN KEY (`target_user_id`) REFERENCES `users`(`uid`)
+			ON UPDATE CASCADE
+            ON DELETE NO ACTION    
+);
+CREATE TABLE `ignore_lists` (
+	`initiator_user_id` VARCHAR(16) NOT NULL,
+    `target_user_id` VARCHAR(16) NOT NULL,
+    PRIMARY KEY (`initiator_user_id`, `target_user_id`),
+    CONSTRAINT
+		FOREIGN KEY (`initiator_user_id`) REFERENCES `users`(`uid`)
+			ON UPDATE CASCADE
+            ON DELETE NO ACTION,
+        FOREIGN KEY (`target_user_id`) REFERENCES `users`(`uid`)
+			ON UPDATE CASCADE
+            ON DELETE NO ACTION    
+);
+CREATE TABLE `posts` (
+	`pid` SERIAL,
+    `header` VARCHAR(128) NOT NULL,
+    `author_id` VARCHAR(16) NOT NULL,
+    `assembly_code` VARCHAR(128) NOT NULL DEFAULT 'T1',
+    `community_id` VARCHAR(32) DEFAULT NULL,
+    `rating` BIGINT NOT NULL DEFAULT 0,
+    `is_deleted` BIT(1) DEFAULT 0,
+    `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP(),
+    `updated_at` DATETIME ON UPDATE CURRENT_TIMESTAMP(),
+    PRIMARY KEY (`pid`),
+    INDEX (`header`, `author_id`, `rating`, `community_id`),
+    CONSTRAINT
+		FOREIGN KEY (`author_id`) REFERENCES `users`(`uid`)
+			ON UPDATE CASCADE
+            ON DELETE NO ACTION,
+		FOREIGN KEY (`community_id`) REFERENCES `communities`(`cid`)
+			ON UPDATE CASCADE
+            ON DELETE NO ACTION
+);
+CREATE TABLE `tags` (
+	`tid` SERIAL,
+    `name` VARCHAR(16) NOT NULL,
+    PRIMARY KEY (`tid`),
+    UNIQUE INDEX (`name`)
+);
+CREATE TABLE `tagsets` (
+	`tag_id` BIGINT UNSIGNED NOT NULL,
+    `post_id` BIGINT UNSIGNED NOT NULL,
+    `assembly_number` SMALLINT NOT NULL DEFAULT 1,
+    `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP(),
+    PRIMARY KEY (`tag_id`, `post_id`),
+    CONSTRAINT
+		FOREIGN KEY (`tag_id`) REFERENCES `tags`(`tid`)
+			ON UPDATE CASCADE
+            ON DELETE CASCADE,
+		FOREIGN KEY (`post_id`) REFERENCES `posts`(`pid`)
+			ON UPDATE CASCADE
+            ON DELETE CASCADE
+);
+CREATE TABLE `comments` (
+	`cuid` SERIAL,
+    `post_id` BIGINT UNSIGNED NOT NULL,
+    `user_id` VARCHAR(16) NOT NULL,
+    `assembly_code` VARCHAR(32) NOT NULL DEFAULT 'T1',
+    `rating` BIGINT NOT NULL DEFAULT 0,
+    `parent_cuid` BIGINT UNSIGNED DEFAULT NULL,
+    `parent_uid` VARCHAR(16) DEFAULT NULL,
+    `is_banned` BIT(1) NOT NULL DEFAULT 0,
+    `is_read` BIT(1) NOT NULL DEFAULT 0,
+    `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP(),
+    `updated_at` DATETIME ON UPDATE CURRENT_TIMESTAMP(),
+    PRIMARY KEY (`cuid`),
+    INDEX (`post_id`, `user_id`),
+    CONSTRAINT
+		FOREIGN KEY (`post_id`) REFERENCES `posts`(`pid`)
+			ON UPDATE CASCADE
+            ON DELETE CASCADE,
+		FOREIGN KEY (`user_id`) REFERENCES `users`(`uid`)
+			ON UPDATE CASCADE
+            ON DELETE NO ACTION,
+		FOREIGN KEY (`parent_uid`) REFERENCES `users`(`uid`)
+			ON UPDATE CASCADE
+            ON DELETE NO ACTION
+);
+CREATE TABLE `saves` (
+	`user_id` VARCHAR(16) NOT NULL,
+	`post_id` BIGINT UNSIGNED NOT NULL DEFAULT 0,
+    `comment_id` BIGINT UNSIGNED NOT NULL DEFAULT 0,
+    `target_type` ENUM('P', 'C') NOT NULL,
+    PRIMARY KEY (`user_id`, `post_id`, `comment_id`),
+    CONSTRAINT
+		FOREIGN KEY (`post_id`) REFERENCES `posts`(`pid`)
+			ON UPDATE CASCADE
+            ON DELETE CASCADE,
+		FOREIGN KEY (`user_id`) REFERENCES `users`(`uid`)
+			ON UPDATE CASCADE
+            ON DELETE CASCADE,
+		FOREIGN KEY (`comment_id`) REFERENCES `comments`(`cuid`)
+			ON UPDATE CASCADE
+            ON DELETE CASCADE
+);
+CREATE TABLE `content` (
+	`coid` SERIAL,
+    `post_id` BIGINT UNSIGNED DEFAULT NULL,
+    `comment_id` BIGINT UNSIGNED DEFAULT NULL,
+    `content_type_id` ENUM('T','V','P') NOT NULL,
+    `assembly_number` SMALLINT NOT NULL,
+    `metadata` JSON NOT NULL,
+    `body` VARCHAR(5000) DEFAULT NULL,
+    `filename` VARCHAR(128) DEFAULT NULL,
+    PRIMARY KEY (`coid`),
+    INDEX (`post_id`, `comment_id`),
+    CONSTRAINT
+		FOREIGN KEY (`post_id`) REFERENCES `posts`(`pid`)
+			ON UPDATE NO ACTION
+            ON DELETE NO ACTION,
+		FOREIGN KEY (`comment_id`) REFERENCES `comments`(`cuid`)
+			ON UPDATE NO ACTION
+            ON DELETE NO ACTION
+);
+CREATE TABLE `assessments` (
+	`asid` SERIAL,
+	`user_id` VARCHAR(16) NOT NULL,
+    `post_id` BIGINT UNSIGNED DEFAULT NULL,
+    `comment_id` BIGINT UNSIGNED DEFAULT NULL,
+    `assessment_type` ENUM('+','-') NOT NULL,
+    PRIMARY KEY (`asid`),
+    CONSTRAINT
+		FOREIGN KEY (`user_id`) REFERENCES `users`(`uid`)
+			ON UPDATE CASCADE
+            ON DELETE NO ACTION,
+		FOREIGN KEY (`post_id`) REFERENCES `posts`(`pid`)
+			ON UPDATE CASCADE
+            ON DELETE CASCADE,
+		FOREIGN KEY (`comment_id`) REFERENCES `comments`(`cuid`)
+			ON UPDATE CASCADE
+            ON DELETE CASCADE
+);
