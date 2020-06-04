@@ -1,5 +1,7 @@
--- Курсовой проект курса "Базы данных" от 6 мая 2020г. (Geekbrains Univercity)
-# views-part (представления)
+-- Самые рейтинговые пользователи
+SELECT `username`,`karma` FROM `users` JOIN `profiles` ON `user_id` = `uid` ORDER BY `karma` DESC;
 
--- CREATE VIEW `users_view` AS SELECT * FROM `users`;
--- CREATE VIEW `users_modermode` AS SELECT `uid`,`email`,`phone` FROM `users`;
+-- Количество созданных пользователями постов
+SELECT COUNT(*) AS `Amount of posts`, `username` FROM `posts` JOIN `users` ON `uid` = `author_id` GROUP BY(`uid`) ORDER BY(`Amount of posts`) DESC;
+
+-- 

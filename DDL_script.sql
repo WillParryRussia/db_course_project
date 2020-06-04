@@ -31,7 +31,7 @@ CREATE TABLE `profiles` (
 	`avatar` VARCHAR(128) NOT NULL DEFAULT 'empty_user_avatar' COMMENT 'Аватарка пользователя',
 	`cover` VARCHAR(128) NOT NULL DEFAULT 'empty_user_cover' COMMENT 'Фон для страницы профиля пользователя',
 	`slogan` VARCHAR(256) DEFAULT NULL COMMENT 'Информация о себе',
-	`karma` BIGINT NOT NULL DEFAULT 0 COMMENT 'Рейтинг пользователя на сайте (+/-)',
+	`karma` DECIMAL(65,1) NOT NULL DEFAULT 0 COMMENT 'Рейтинг пользователя на сайте (+/-)',
 	`amount_posts` BIGINT UNSIGNED NOT NULL DEFAULT 0 COMMENT 'Количество постов пользователя. ТРИГГЕР из таблицы posts',
 	PRIMARY KEY (`user_id`),
     UNIQUE INDEX (`phone`),
@@ -259,7 +259,7 @@ CREATE TABLE `content` (
 );
 #DROP TABLE IF EXISTS `assessments`;
 CREATE TABLE `assessments` (
-	`asid` SERIAL COMMENT 'Идентификатор оценки',
+	`asid` SERIAL,
 	`user_id` BIGINT UNSIGNED NOT NULL COMMENT 'Кто поставил оценку',
 	`post_id` BIGINT UNSIGNED DEFAULT NULL COMMENT 'Какому посту (если посту)',
 	`comment_id` BIGINT UNSIGNED DEFAULT NULL COMMENT 'Какому комменту (если комменту)',
