@@ -3,9 +3,10 @@
 USE `course_project`;
 INSERT INTO `users` (`uid`,`username`,`email`,`password_hash`,`password_hash2`, `is_administrator`, `is_moderator`) VALUES ('1', 'administrator', 'admin@site.ru', SHA(1), MD5(1), 1, 1);
 UPDATE `profiles` SET `phone`=79040459833,`preferences`='{"strawberryMode":"1"}',`firstname`='Will',`lastname`='Parry',`sex`='M',`birthday`='1987-04-12' WHERE `user_id` = 1;
-INSERT INTO `users` (`username`,`email`,`password_hash`,`password_hash2`) VALUES ('johnsnow', 'johnsnow@winterfell.gt', SHA(2), MD5(2)),('billsmith', 'billsmith@yahoo.ru', SHA(3), MD5(3)),('superuser', 'superuser@yandex.ru', SHA(4), MD5(4)), ('noname', 'noname@attratata.ru', SHA(5), MD5(5)),('ali.baba', 'ali.baba@express.ru', SHA(6), MD5(6)),('mikestein', 'mikestein@gmain.com', SHA(7), MD5(7));
-INSERT INTO `subscribers` (`initiator_user_id`, `target_user_id`) VALUES (2,1), (3,1), (2,5), (4,1), (4,2), (3,2), (2,3);
-DELETE FROM `subscribers` WHERE `initiator_user_id` = 4 AND `target_user_id` = 2;
+INSERT INTO `users` (`username`,`email`,`password_hash`,`password_hash2`) VALUES ('johnsnow', 'johnsnow@winterfell.gt', SHA(2), MD5(2)),('billsmith', 'billsmith@yahoo.ru', SHA(3), MD5(3)),('superuser', 'superuser@yandex.ru', SHA(4), MD5(4)), ('noname', 'noname@aiwillhackyourmom.gfys', SHA(5), MD5(5)),('ali.baba', 'ali.baba@express.ru', SHA(6), MD5(6)),('mikestein', 'mikestein@gmain.com', SHA(7), MD5(7)),('onizuka', 'onizuka@sensei.jp', SHA(8), MD5(8)),('geralt', 'geralt@gwynbleydd.rv', SHA(9), MD5(9)),('zireael', 'cirilla@riannon.cintra', SHA(10), MD5(10));
+INSERT INTO `subscribers` (`initiator_user_id`, `target_user_id`) VALUES (2,1), (3,1), (4,1), (5,1), (6,1), (7,1), (8,1), (9,1), (10,1),(3,2),(5,2),(8,2),(9,2),(2,3),(10,3),(2,5),(3,5),(4,5),(6,5),(7,5),(10,5),(1,6),(2,6),(3,6),(4,6),(5,6),(8,7),(7,8),(5,9),(1,10),(9,10),(10,9);
+DELETE FROM `subscribers` WHERE `initiator_user_id` = 5 AND `target_user_id` = 2;
+
 START TRANSACTION;
 	SET @new_community_name = 'The Game of Thrones';
     SET @admin_id = (SELECT `uid` FROM `users` WHERE `username` = 'johnsnow');
