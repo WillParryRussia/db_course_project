@@ -19,7 +19,7 @@ CREATE TABLE `users` (
 	UNIQUE INDEX (`email`)
 );
 #DROP TABLE IF EXISTS `profiles`;
-CREATE TABLE `profiles` (
+CREATE TABLE `user_profiles` (
 	`user_id` BIGINT UNSIGNED NOT NULL COMMENT 'Внешний ключ на идентификатор пользователя, отношение таблиц 1 х 1',
     `phone` BIGINT UNSIGNED DEFAULT NULL COMMENT 'Номер мобильного телефона пользователя при желании',
 	`preferences` JSON COMMENT 'Личные настройки пользователя',
@@ -58,6 +58,22 @@ CREATE TABLE `subscribers` (
 CREATE TABLE `communities` (
 	`cid` SERIAL COMMENT 'Уникальный цифровой идентификатор сообщества',
 	`community_name` VARCHAR(32) NOT NULL COMMENT 'Название сообщества',
+	`administrator_id` BIGINT UNSIGNED NOT NULL COMMENT 'Идентификатор пользователя-администратора сообщества, отношение 1 х М',
+	`moderator_id` BIGINT UNSIGNED DEFAULT NULL COMMENT 'Идентификатор пользователя-модератора сообщества, отношение 1 х М',
+	`created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP() COMMENT 'Временной штамп создания сообщества',
+	PRIMARY KEY (`cid`),
+	UNIQUE INDEX (`community_name`),
+	CONSTRAINT
+		FOREIGN KEY (`administrator_id`) REFERENCES `users`(`uid`)
+			ON UPDATE CASCADE
+			ON DELETE NO ACTION,
+		FOREIGN KEY (`moderator_id`) REFERENCES `users`(`uid`)
+			ON UPDATE CASCADE
+			ON DELETE NO ACTION
+);
+#DROP TABLE IF EXISTS `community_profiles`;
+CREATE TABLE `community_profiles` (
+	`community_id` SERIAL COMMENT 'Внешний ключ на идентификатор  сообщества, отношение таблиц 1 х 1',
 	`rating` BIGINT NOT NULL DEFAULT 0 COMMENT 'Рейтинг сообщества, который складывается из рейтинга всех его постов',
 	`avatar` VARCHAR(128) NOT NULL DEFAULT 'empty_comm_avatar' COMMENT 'Аватар сообщества',
 	`cover` VARCHAR(128) NOT NULL DEFAULT 'empty_comm_cover' COMMENT 'Обложка профиля сообщества',
@@ -65,17 +81,10 @@ CREATE TABLE `communities` (
 	`amount_posts` BIGINT NOT NULL DEFAULT 0 COMMENT 'Количество постов в сообществе',
 	`amount_members` BIGINT UNSIGNED NOT NULL DEFAULT 0 COMMENT 'Количество членов',
 	`description` VARCHAR(1000) NOT NULL DEFAULT 'Community Description Area' COMMENT 'Полнотекстовое описание сообщества',
-	`administrator_id` BIGINT UNSIGNED NOT NULL COMMENT 'Идентификатор пользователя-администратора сообщества, отношение 1 х М',
-	`moderator_id` BIGINT UNSIGNED DEFAULT NULL COMMENT 'Идентификатор пользователя-модератора сообщества, отношение 1 х М',
-	`created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP() COMMENT 'Временной штамп создания сообщества',
-	PRIMARY KEY (`cid`),
-	UNIQUE INDEX (`community_name`),
+	PRIMARY KEY (`community_id`),
 	INDEX (`rating`),
 	CONSTRAINT
-		FOREIGN KEY (`administrator_id`) REFERENCES `users`(`uid`)
-			ON UPDATE CASCADE
-			ON DELETE NO ACTION,
-		FOREIGN KEY (`moderator_id`) REFERENCES `users`(`uid`)
+		FOREIGN KEY (`community_id`) REFERENCES `communities`(`cid`)
 			ON UPDATE CASCADE
 			ON DELETE NO ACTION
 );
@@ -150,7 +159,7 @@ CREATE TABLE `posts` (
 	`pid` SERIAL COMMENT 'Идентификатор контента',
 	`header` VARCHAR(128) NOT NULL COMMENT 'Заголовок поста',
 	`author_id` BIGINT UNSIGNED NOT NULL COMMENT 'Автор поста',
-	`assembly_code` VARCHAR(128) NOT NULL DEFAULT 'T1' COMMENT 'Код сборки поста из таблицы контента',
+	`assembly_code` VARCHAR(128) NOT NULL DEFAULT 'T' COMMENT 'Код сборки поста из таблицы контента',
 	`community_id` BIGINT UNSIGNED DEFAULT NULL COMMENT 'Относится ли к сообществу',
 	`rating` BIGINT NOT NULL DEFAULT 0 COMMENT 'Рейтинг поста. ТРИГГЕР, когда ставят оценки',
 	`is_deleted` BIT(1) DEFAULT 0 COMMENT 'Удалён ли пост',
@@ -181,7 +190,6 @@ CREATE TABLE `tagsets` (
 	`tag_id` BIGINT UNSIGNED NOT NULL COMMENT 'Идентификатор тэга из справочника',
 	`post_id` BIGINT UNSIGNED NOT NULL COMMENT 'Идентификатор поста, кому принадлежат тэги',
 	`assembly_number` SMALLINT NOT NULL DEFAULT 1 COMMENT 'Порядок следования тэгов поста',
-	`created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP() COMMENT 'Когда создан, чтобы отслеживать популярность тэгов',
 	PRIMARY KEY (`tag_id`, `post_id`),
 	CONSTRAINT
 		FOREIGN KEY (`tag_id`) REFERENCES `tags`(`tid`)
@@ -241,11 +249,12 @@ CREATE TABLE `content` (
 	`coid` SERIAL COMMENT 'Идентификатор контекста',
 	`post_id` BIGINT UNSIGNED DEFAULT NULL COMMENT 'Идентификатор поста, если этот контент относится к посту',
 	`comment_id` BIGINT UNSIGNED DEFAULT NULL COMMENT 'Идентификатор коммента, если этот контент относится к комменту',
-	`content_type_id` ENUM('T','V','P') NOT NULL COMMENT 'Тип контента, T - текст, P - пикча, V - видео',
+	`content_type` ENUM('T','V','P') NOT NULL COMMENT 'Тип контента, T - текст, P - пикча, V - видео',
 	`assembly_number` SMALLINT NOT NULL COMMENT 'Сборочный номер, чтобы расположить контент в верном порядке',
 	`metadata` JSON NOT NULL COMMENT 'Разные метаданные для файла',
 	`body` VARCHAR(5000) DEFAULT NULL COMMENT 'Содержимое контента, если тип Т',
-	`filename` VARCHAR(128) DEFAULT NULL COMMENT 'Ссылка на внешний источник или имя медифайла',
+	`filename` VARCHAR(128) DEFAULT NULL COMMENT 'Ссылка на имя медифайла',
+    `filelink` VARCHAR(256) DEFAULT NULL COMMENT 'Ссылка на имя внешний источник',
 	PRIMARY KEY (`coid`),
 	INDEX (`post_id`),
 	INDEX (`comment_id`),
