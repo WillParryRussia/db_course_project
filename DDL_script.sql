@@ -204,10 +204,12 @@ CREATE TABLE `comments` (
 	`cuid` SERIAL COMMENT 'Идентификатор коммента',
 	`post_id` BIGINT UNSIGNED NOT NULL COMMENT 'Пост, в котором находится коммент',
 	`user_id` BIGINT UNSIGNED NOT NULL COMMENT 'Пользователь написавший коммент',
-	`assembly_code` VARCHAR(32) NOT NULL DEFAULT 'T1' COMMENT 'Код сборки коммент',
+	`assembly_code` VARCHAR(32) NOT NULL DEFAULT 'T' COMMENT 'Код сборки коммент',
 	`rating` BIGINT NOT NULL DEFAULT 0 COMMENT 'Рейтинг коммента',
 	`parent_cuid` BIGINT UNSIGNED DEFAULT NULL COMMENT 'Идентификатор родительского коммента',
 	`parent_uid` BIGINT UNSIGNED DEFAULT NULL COMMENT 'Идентификатор автора родительского коммента',
+	# Тут стоит отдельно заметить, что если идентификатор родительского коммента NULL
+    # то это значит что он в корне иерархии комментов поста. То-есть коммент непосредственно к посту
 	`is_banned` BIT(1) NOT NULL DEFAULT 0 COMMENT 'Является ли коммент забаненым',
 	`is_read` BIT(1) NOT NULL DEFAULT 0 COMMENT 'Прочитан ли коммент тем, кому он написан',
 	`created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP() COMMENT 'Когда создан',

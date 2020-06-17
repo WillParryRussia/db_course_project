@@ -17,8 +17,18 @@ INSERT INTO `users_achievements`(`user_id`,`achievement_id`,`description`) VALUE
 INSERT INTO `ignore_lists`(`initiator_user_id`,`target_user_id`) VALUES (4,1),(4,6),(4,8),(8,2),(6,5),(7,2),(3,9),(10,4),(9,4),(7,8),(2,4),(2,5),(2,7),(9,5),(10,5);
 # INSERT INTO `tags` (`name`) VALUES ('auto'),('moto'),('support'),('cat'),('dog'),('witcher'),('thewitcher'),('withcher3'),('adv'),('helpme'),('got'),('game of thrones'),('targariens'),('buy n sell'),('schematechnic'),('text'),('video'),('youtube'),('strawberry'),('18+');
 ########################################################
+-- Хотелось дополнительно отметить, что при генерации страницы мы методом POST передадим некоторые переменные
+-- например ID пользователя, а некоторые получим асинхронным запросом к БД, например при выборе из
+-- выплывающего списка сообщества. Нужно переделать переменные пользователя и сообщества и пересмотреть некоторые концепции
+-- Убрать повторяющийся код и вынести его в процедуру : процедура добавления поста и контента и поочерёдно процедуры
+-- добавления тэгов и всё это обернуть в транзакцию!
+-- Возможно вместо автоинкрементного идентифкатора лучше сделать генерацию случайного десятизначного числа
+-- потом проверить есть ли такой идентификатор и если есть ещё раз сгенерить пока не получиться уникальное
+-- обернуть это в функцию и вместо автоинкрементного идентификатора назначать такое псевдослучайное уникальное число
+
 START TRANSACTION;
-	SET @author_id = (SELECT `uid` FROM `users` WHERE `username` = 'willparry');
+	######################## PROCEDURE : унифицировать форму добавления. Пусть NULL вместо ненужных полей
+	SET @author_id = 1;
     SET @community_id = (SELECT `cid` FROM `communities` WHERE `community_name` = 'Support Tech');
 	INSERT INTO `posts` (`header`,`author_id`, `assembly_code`, `community_id`) VALUES 
 		('How to create a post', @author_id, 'TPTP', @community_id);
@@ -28,6 +38,7 @@ START TRANSACTION;
 		(@last_inserted_id, 'P', 1, '{"size":"600x600"}', NULL, 'opening_picture.jpg'),
 		(@last_inserted_id, 'T', 2, '{}', 'Second text block of the post', NULL),
 		(@last_inserted_id, 'P', 2, '{"size":"600x600"}', NULL, 'ending_picture.jpg');
+	########################
 	# Бэкенд получает массив тэгов, с которым ассоциирован пост и передаёт их в хранимую процедуру по одному
 	SET @tag_id = (SELECT `add_tag` ('helpdesk'));
 	INSERT INTO `tagsets` (`tag_id`,`post_id`,`assembly_number`) VALUES (@tag_id, @last_inserted_id, 1);
@@ -225,7 +236,21 @@ START TRANSACTION;
 	INSERT INTO `tagsets` (`tag_id`,`post_id`,`assembly_number`) VALUES (@tag_id, @last_inserted_id, 5);
 COMMIT;
 
+START TRANSACTION;
+	-- Кнопкой "Добавить коммент" или "Ответить" мы сделаем асинхронный запрос в БД и получим идентификатор
+    -- родительского коммента и идентификатор автора родительского коммента (или НУЛЬ если коммент к посту)
+	
+    SET @author_id = 1;
+    SET @post_id = 1;
+    SET @parent_cuid = NULL;
+    SET @parent_uid = NULL;
 
+	INSERT INTO `comments` (`post_id`,`user_id`,`assembly_code`) VALUES (@post_id, @author_id, 'T');
+    SET @lid = LAST_INSERT_ID();
+    INSERT INTO `content` (`comment_id`, `content_type`, `assembly_number`, `metadata`, `body`, `filename`,`filelink`)
+		VALUES (@lid, 'T', 1, '{}', 'Comment text', NULL, NULL);
+COMMIT;
+    
 # ASSESSMENTS / COMMENTS / SAVES
 
 
@@ -240,3 +265,25 @@ COMMIT;
 #INSERT INTO `comments` (`post_id`,`user_id`) VALUES (1, 2), (2, 3), (3, 1);
 #INSERT INTO `assessments` (`user_id`,`post_id`,`assessment_type`) VALUES (1, 1, '+'),(2, 1, '+'),(3, 1, '-'),(4, 1, '-'),(5, 1, '+'),(6, 1, '+'),(7, 1, '+');
 #INSERT INTO `assessments` (`user_id`,`comment_id`,`assessment_type`) VALUES (5, 1, '+'),(6, 1, '+'),(5, 1, '+'),(5, 1, '+'),(5, 1, '+');
+/*
+Заметки на полях
+Механизм создания поста : пользователь кликает кнопку создать пост и переходит в форму создания поста
+С помощью ПОСТ переменных мы определим кто автор, это первое
+Пользователь пишет пост, добавляет картинки, тэги и нажимает "создать"
+Движок парсит то, что написал пользователь и распределяет всё по массивам
+Типа массив текстов, массив картинков, массив видео и массив тэгов
+Прогоняет каждый массив по циклам и создаёт некую строку и эту строку передаёт уже в транзакцию
+ВОПРОС : если движок передаст в PDO строку с транзакцией, то как сгенерировать уник айди
+Пусть с этим разбирается функция внутри мускула. Движок на основе парсинга лишь создаст строку
+Запускаем транзакцию
+1. генерируем айди ФУНКЦИЯ
+2. добавляем записи в таблицы поста, контента и тэгов ПРОЦЕДУРЫ
+3. поздравляем! ))
+С помощью генерации большого уникального числа нам не потребуется получать через ласт инсерт айди
+Потому что ласт инсерт айди чреват тем, что при большом количестве запросов мы можем получить не тот айдишник
+Сам механизм обернём в транзакцию
+
+
+
+
+*/
