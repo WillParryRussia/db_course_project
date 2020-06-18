@@ -162,6 +162,7 @@ CREATE TABLE `posts` (
 	`assembly_code` VARCHAR(128) NOT NULL DEFAULT 'T' COMMENT 'Код сборки поста из таблицы контента',
 	`community_id` BIGINT UNSIGNED DEFAULT NULL COMMENT 'Относится ли к сообществу',
 	`rating` BIGINT NOT NULL DEFAULT 0 COMMENT 'Рейтинг поста. ТРИГГЕР, когда ставят оценки',
+    `saved` BIGINT NOT NULL DEFAULT 0 COMMENT 'Сколько раз сохранён пост',
 	`is_deleted` BIT(1) DEFAULT 0 COMMENT 'Удалён ли пост',
 	`created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP() COMMENT 'Когда создан',
 	`updated_at` DATETIME ON UPDATE CURRENT_TIMESTAMP() COMMENT 'Когда изменен',
@@ -230,11 +231,11 @@ CREATE TABLE `comments` (
 );
 #DROP TABLE IF EXISTS `saves`;
 CREATE TABLE `saves` (
+	`sid` SERIAL,
 	`user_id` BIGINT UNSIGNED NOT NULL COMMENT 'Пользователь, сохранивший пост или коммент',
-	`post_id` BIGINT UNSIGNED NOT NULL DEFAULT 0 COMMENT 'Сохранённый пост (0 если не пост сохранён)',
-	`comment_id` BIGINT UNSIGNED NOT NULL DEFAULT 0 COMMENT 'Сохранённый коммент (0 если не коммент сохранён)',
-	`target_type` ENUM('P', 'C') NOT NULL COMMENT 'Тип сохранённого контента, пост или коммент',
-	PRIMARY KEY (`user_id`, `post_id`, `comment_id`),
+	`post_id` BIGINT UNSIGNED DEFAULT NULL COMMENT 'Сохранённый пост (0 если не пост сохранён)',
+	`comment_id` BIGINT UNSIGNED DEFAULT NULL COMMENT 'Сохранённый коммент (0 если не коммент сохранён)',
+	PRIMARY KEY (`sid`),
 	CONSTRAINT
 		FOREIGN KEY (`post_id`) REFERENCES `posts`(`pid`)
 			ON UPDATE CASCADE

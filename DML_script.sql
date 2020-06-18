@@ -13,277 +13,489 @@ INSERT INTO `communities_users` (`community_id`,`member_id`) VALUES (1,2),(1,3),
 DELETE FROM `communities_users` WHERE `community_id`= 8 AND `member_id`= 2;
 INSERT INTO `users_notes` (`author_user_id`,`target_user_id`,`body`) VALUES (2,1,'admin'),(9,1,'our admin'),(10,1,'administrator'),(1,2,'fanart GOT'),(9,10,'ciri'),(10,9,'geralt'),(3,4,'kiddyboy'),(5,4,'little'),(6,4,'dont argue with him'),(7,4,'such a stupid one!!');
 INSERT INTO `achievements`(`name`) VALUES ('Post of the week'),('Post of the month'),('Active reader'),('You know nothing'),('Top Five in karma'),('Top writer'),('Five years user'),('Ten years user'),('Comment of the week');
+INSERT INTO `achievements`(`aid`,`name`) VALUES (100 ,'Mystery Golden Sign');
 INSERT INTO `users_achievements`(`user_id`,`achievement_id`,`description`) VALUES (2,1,'31 Week of 2019'),(2,1,'32 Week of 2019'),(7,1,'33 Week of 2019'),(3,2,'Igritt says'),(9,5,'Second place'),(10,5,'First place'),(4,6,'At the end of 2019'),(4,6,'At the end of 2018'),(1,7,''), (1,8,'');
 INSERT INTO `ignore_lists`(`initiator_user_id`,`target_user_id`) VALUES (4,1),(4,6),(4,8),(8,2),(6,5),(7,2),(3,9),(10,4),(9,4),(7,8),(2,4),(2,5),(2,7),(9,5),(10,5);
-# INSERT INTO `tags` (`name`) VALUES ('auto'),('moto'),('support'),('cat'),('dog'),('witcher'),('thewitcher'),('withcher3'),('adv'),('helpme'),('got'),('game of thrones'),('targariens'),('buy n sell'),('schematechnic'),('text'),('video'),('youtube'),('strawberry'),('18+');
-########################################################
--- Хотелось дополнительно отметить, что при генерации страницы мы методом POST передадим некоторые переменные
--- например ID пользователя, а некоторые получим асинхронным запросом к БД, например при выборе из
--- выплывающего списка сообщества. Нужно переделать переменные пользователя и сообщества и пересмотреть некоторые концепции
--- Убрать повторяющийся код и вынести его в процедуру : процедура добавления поста и контента и поочерёдно процедуры
--- добавления тэгов и всё это обернуть в транзакцию!
--- Возможно вместо автоинкрементного идентифкатора лучше сделать генерацию случайного десятизначного числа
--- потом проверить есть ли такой идентификатор и если есть ещё раз сгенерить пока не получиться уникальное
--- обернуть это в функцию и вместо автоинкрементного идентификатора назначать такое псевдослучайное уникальное число
-
-START TRANSACTION;
-	######################## PROCEDURE : унифицировать форму добавления. Пусть NULL вместо ненужных полей
-	SET @author_id = 1;
-    SET @community_id = (SELECT `cid` FROM `communities` WHERE `community_name` = 'Support Tech');
-	INSERT INTO `posts` (`header`,`author_id`, `assembly_code`, `community_id`) VALUES 
-		('How to create a post', @author_id, 'TPTP', @community_id);
-	SET @last_inserted_id = LAST_INSERT_ID();
-	INSERT INTO `content` (`post_id`, `content_type`, `assembly_number`, `metadata`, `body`, `filename`) VALUES 
-		(@last_inserted_id, 'T', 1, '{}', 'First text block of the post', NULL),
-		(@last_inserted_id, 'P', 1, '{"size":"600x600"}', NULL, 'opening_picture.jpg'),
-		(@last_inserted_id, 'T', 2, '{}', 'Second text block of the post', NULL),
-		(@last_inserted_id, 'P', 2, '{"size":"600x600"}', NULL, 'ending_picture.jpg');
-	########################
-	# Бэкенд получает массив тэгов, с которым ассоциирован пост и передаёт их в хранимую процедуру по одному
-	SET @tag_id = (SELECT `add_tag` ('helpdesk'));
-	INSERT INTO `tagsets` (`tag_id`,`post_id`,`assembly_number`) VALUES (@tag_id, @last_inserted_id, 1);
-    
-	SET @tag_id = (SELECT `add_tag` ('support'));
-	INSERT INTO `tagsets` (`tag_id`,`post_id`,`assembly_number`) VALUES (@tag_id, @last_inserted_id, 2);
-    
-	SET @tag_id = (SELECT `add_tag` ('supptech'));
-	INSERT INTO `tagsets` (`tag_id`,`post_id`,`assembly_number`) VALUES (@tag_id, @last_inserted_id, 3);    
-COMMIT;
-START TRANSACTION;
-	SET @author_id = (SELECT `uid` FROM `users` WHERE `username` = 'willparry');
-    SET @community_id = (SELECT `cid` FROM `communities` WHERE `community_name` = 'Support Tech');
-	INSERT INTO `posts` (`header`,`author_id`, `assembly_code`, `community_id`) VALUES 
-		('How not to get banned', @author_id, 'TPV', @community_id);
-	SET @last_inserted_id = LAST_INSERT_ID();
-	INSERT INTO `content` (`post_id`, `content_type`, `assembly_number`, `metadata`, `body`, `filename`,`filelink`) VALUES 
-		(@last_inserted_id, 'T', 1, '{}', 'Blah-bla-blah', NULL, NULL),
-		(@last_inserted_id, 'P', 1, '{"size":"600x600"}', NULL, 'opening_picture.jpg', NULL),
-		(@last_inserted_id, 'V', 1, '{}', NULL, NULL, 'youtube.com/......');
-	SET @tag_id = (SELECT `add_tag` ('helpdesk'));
-	INSERT INTO `tagsets` (`tag_id`,`post_id`,`assembly_number`) VALUES (@tag_id, @last_inserted_id, 1);
-    
-	SET @tag_id = (SELECT `add_tag` ('support'));
-	INSERT INTO `tagsets` (`tag_id`,`post_id`,`assembly_number`) VALUES (@tag_id, @last_inserted_id, 2);
-    
-	SET @tag_id = (SELECT `add_tag` ('supptech'));
-	INSERT INTO `tagsets` (`tag_id`,`post_id`,`assembly_number`) VALUES (@tag_id, @last_inserted_id, 3);
-    
-    SET @tag_id = (SELECT `add_tag` ('youtube'));
-	INSERT INTO `tagsets` (`tag_id`,`post_id`,`assembly_number`) VALUES (@tag_id, @last_inserted_id, 4);
-    
-    SET @tag_id = (SELECT `add_tag` ('banhammer'));
-	INSERT INTO `tagsets` (`tag_id`,`post_id`,`assembly_number`) VALUES (@tag_id, @last_inserted_id, 5);
-COMMIT;
-# Создаём пост без указания сообщества
-START TRANSACTION;
-	SET @author_id = (SELECT `uid` FROM `users` WHERE `username` = 'zireael');
-    SET @community_id = NULL;
-	INSERT INTO `posts` (`header`,`author_id`, `assembly_code`) VALUES 
-		('Live as Witcher', @author_id, 'TP');
-	SET @last_inserted_id = LAST_INSERT_ID();
-	INSERT INTO `content` (`post_id`, `content_type`, `assembly_number`, `metadata`, `body`, `filename`,`filelink`) VALUES 
-		(@last_inserted_id, 'T', 1, '{}', 'If u want to live like ...', NULL, NULL),
-		(@last_inserted_id, 'P', 1, '{"size":"1600x1600"}', NULL, 'sword.jpg', NULL);
-	SET @tag_id = (SELECT `add_tag` ('thewitcher'));
-	INSERT INTO `tagsets` (`tag_id`,`post_id`,`assembly_number`) VALUES (@tag_id, @last_inserted_id, 1);
-    
-	SET @tag_id = (SELECT `add_tag` ('guide'));
-	INSERT INTO `tagsets` (`tag_id`,`post_id`,`assembly_number`) VALUES (@tag_id, @last_inserted_id, 2);
-    
-	SET @tag_id = (SELECT `add_tag` ('fanart'));
-	INSERT INTO `tagsets` (`tag_id`,`post_id`,`assembly_number`) VALUES (@tag_id, @last_inserted_id, 3);
-COMMIT;
-# Потом решаем внести его в сообщество
-UPDATE `posts` SET `community_id` = 10 WHERE `pid` = 3;
-# А потом переносим в другое
-UPDATE `posts` SET `community_id` = 9 WHERE `pid` = 3;
-# А потом вообще выносим из сообщества
-UPDATE `posts` SET `community_id` = NULL WHERE `pid` = 3;
-
-START TRANSACTION;
-	SET @author_id = (SELECT `uid` FROM `users` WHERE `username` = 'billsmith');
-    SET @community_id = NULL;
-	INSERT INTO `posts` (`header`,`author_id`, `assembly_code`) VALUES 
-		('Stories about WW2', @author_id, 'TPTPTP');
-	SET @last_inserted_id = LAST_INSERT_ID();
-	INSERT INTO `content` (`post_id`, `content_type`, `assembly_number`, `metadata`, `body`, `filename`) VALUES 
-		(@last_inserted_id, 'T', 1, '{}', 'Blah-bla-blah', NULL),
-		(@last_inserted_id, 'P', 1, '{"size":"600x600"}', NULL, 'soldier1.jpg'),
-		(@last_inserted_id, 'T', 2, '{}', 'Blah-bla-blah', NULL),
-		(@last_inserted_id, 'P', 2, '{"size":"600x600"}', NULL, 'soldier2.jpg'),
-        (@last_inserted_id, 'T', 3, '{}', 'Blah-bla-blah', NULL),
-		(@last_inserted_id, 'P', 3, '{"size":"600x600"}', NULL, 'soldier3.jpg');
-	SET @tag_id = (SELECT `add_tag` ('ww2'));
-	INSERT INTO `tagsets` (`tag_id`,`post_id`,`assembly_number`) VALUES (@tag_id, @last_inserted_id, 1);
-    
-	SET @tag_id = (SELECT `add_tag` ('soldiers'));
-	INSERT INTO `tagsets` (`tag_id`,`post_id`,`assembly_number`) VALUES (@tag_id, @last_inserted_id, 2);
-    
-	SET @tag_id = (SELECT `add_tag` ('war'));
-	INSERT INTO `tagsets` (`tag_id`,`post_id`,`assembly_number`) VALUES (@tag_id, @last_inserted_id, 3);
-    
-    SET @tag_id = (SELECT `add_tag` ('history'));
-	INSERT INTO `tagsets` (`tag_id`,`post_id`,`assembly_number`) VALUES (@tag_id, @last_inserted_id, 4);
-COMMIT;
-START TRANSACTION;
-	SET @author_id = (SELECT `uid` FROM `users` WHERE `username` = 'johnsnow');
-    SET @community_id = (SELECT `cid` FROM `communities` WHERE `community_name` = 'The Game of Thrones');
-	INSERT INTO `posts` (`header`,`author_id`, `assembly_code`, `community_id`) VALUES 
-		('Daenerys', @author_id, 'P', @community_id);
-	SET @last_inserted_id = LAST_INSERT_ID();
-	INSERT INTO `content` (`post_id`, `content_type`, `assembly_number`, `metadata`, `body`, `filename`,`filelink`) VALUES 
-		(@last_inserted_id, 'P', 1, '{"size":"600x600"}', NULL, 'Daenerys_and_John.jpg', NULL);
-	SET @tag_id = (SELECT `add_tag` ('GOT'));
-	INSERT INTO `tagsets` (`tag_id`,`post_id`,`assembly_number`) VALUES (@tag_id, @last_inserted_id, 1);
-    
-	SET @tag_id = (SELECT `add_tag` ('fanart'));
-	INSERT INTO `tagsets` (`tag_id`,`post_id`,`assembly_number`) VALUES (@tag_id, @last_inserted_id, 2);
-    
-	SET @tag_id = (SELECT `add_tag` ('queen'));
-	INSERT INTO `tagsets` (`tag_id`,`post_id`,`assembly_number`) VALUES (@tag_id, @last_inserted_id, 3);
-COMMIT;
-START TRANSACTION;
-	SET @author_id = (SELECT `uid` FROM `users` WHERE `username` = 'johnsnow');
-    SET @community_id = (SELECT `cid` FROM `communities` WHERE `community_name` = 'The Game of Thrones');
-	INSERT INTO `posts` (`header`,`author_id`, `assembly_code`, `community_id`) VALUES 
-		('Littlefinger', @author_id, 'P', @community_id);
-	SET @last_inserted_id = LAST_INSERT_ID();
-	INSERT INTO `content` (`post_id`, `content_type`, `assembly_number`, `metadata`, `body`, `filename`) VALUES 
-		(@last_inserted_id, 'P', 1, '{"size":"1280x720"}', NULL, 'Littlefinger_trying_to_spy.jpg');
-	SET @tag_id = (SELECT `add_tag` ('GOT'));
-	INSERT INTO `tagsets` (`tag_id`,`post_id`,`assembly_number`) VALUES (@tag_id, @last_inserted_id, 1);
-    
-	SET @tag_id = (SELECT `add_tag` ('videomoment'));
-	INSERT INTO `tagsets` (`tag_id`,`post_id`,`assembly_number`) VALUES (@tag_id, @last_inserted_id, 2);
-    
-	SET @tag_id = (SELECT `add_tag` ('spy'));
-	INSERT INTO `tagsets` (`tag_id`,`post_id`,`assembly_number`) VALUES (@tag_id, @last_inserted_id, 3);
-COMMIT;
-START TRANSACTION;
-	SET @author_id = (SELECT `uid` FROM `users` WHERE `username` = 'johnsnow');
-    SET @community_id = (SELECT `cid` FROM `communities` WHERE `community_name` = 'The Game of Thrones');
-	INSERT INTO `posts` (`header`,`author_id`, `assembly_code`, `community_id`) VALUES 
-		('Map of GOT', @author_id, 'PP', @community_id);
-	SET @last_inserted_id = LAST_INSERT_ID();
-	INSERT INTO `content` (`post_id`, `content_type`, `assembly_number`, `metadata`, `body`, `filename`) VALUES 
-		(@last_inserted_id, 'P', 1, '{"size":"1280x720"}', NULL, 'Westeros.jpg'),
-		(@last_inserted_id, 'P', 2, '{"size":"1280x720"}', NULL, 'Essos.jpg');
-	SET @tag_id = (SELECT `add_tag` ('GOT'));
-	INSERT INTO `tagsets` (`tag_id`,`post_id`,`assembly_number`) VALUES (@tag_id, @last_inserted_id, 1);
-    
-	SET @tag_id = (SELECT `add_tag` ('map'));
-	INSERT INTO `tagsets` (`tag_id`,`post_id`,`assembly_number`) VALUES (@tag_id, @last_inserted_id, 2);
-    
-	SET @tag_id = (SELECT `add_tag` ('westeros'));
-	INSERT INTO `tagsets` (`tag_id`,`post_id`,`assembly_number`) VALUES (@tag_id, @last_inserted_id, 3);
-    
-    SET @tag_id = (SELECT `add_tag` ('essos'));
-	INSERT INTO `tagsets` (`tag_id`,`post_id`,`assembly_number`) VALUES (@tag_id, @last_inserted_id, 4);
-COMMIT;
-START TRANSACTION;
-	SET @author_id = (SELECT `uid` FROM `users` WHERE `username` = 'noname');
-    SET @community_id = NULL;
-	INSERT INTO `posts` (`header`,`author_id`, `assembly_code`) VALUES 
-		('Brainhacking', @author_id, 'TP');
-	SET @last_inserted_id = LAST_INSERT_ID();
-	INSERT INTO `content` (`post_id`, `content_type`, `assembly_number`, `metadata`, `body`, `filename`,`filelink`) VALUES 
-		(@last_inserted_id, 'T', 1, '{}', 'Blah blah blah', NULL, NULL),
-        (@last_inserted_id, 'P', 1, '{"size":"1280x720"}', NULL, 'brain.jpg', NULL);
-	SET @tag_id = (SELECT `add_tag` ('hacking'));
-	INSERT INTO `tagsets` (`tag_id`,`post_id`,`assembly_number`) VALUES (@tag_id, @last_inserted_id, 1);
-    
-	SET @tag_id = (SELECT `add_tag` ('brain'));
-	INSERT INTO `tagsets` (`tag_id`,`post_id`,`assembly_number`) VALUES (@tag_id, @last_inserted_id, 2);
-COMMIT;
-START TRANSACTION;
-	SET @author_id = (SELECT `uid` FROM `users` WHERE `username` = 'noname');
-    SET @community_id = NULL;
-	INSERT INTO `posts` (`header`,`author_id`, `assembly_code`) VALUES 
-		('How to get money easily', @author_id, 'T');
-	SET @last_inserted_id = LAST_INSERT_ID();
-	INSERT INTO `content` (`post_id`, `content_type`, `assembly_number`, `metadata`, `body`, `filename`,`filelink`) VALUES 
-		(@last_inserted_id, 'T', 1, '{}', 'No way, dude -)', NULL, NULL);
-	SET @tag_id = (SELECT `add_tag` ('hacking'));
-	INSERT INTO `tagsets` (`tag_id`,`post_id`,`assembly_number`) VALUES (@tag_id, @last_inserted_id, 1);
-	SET @tag_id = (SELECT `add_tag` ('money'));
-	INSERT INTO `tagsets` (`tag_id`,`post_id`,`assembly_number`) VALUES (@tag_id, @last_inserted_id, 2);
-COMMIT;
-START TRANSACTION;
-	SET @author_id = (SELECT `uid` FROM `users` WHERE `username` = 'onizuka');
-    SET @community_id = (SELECT `cid` FROM `communities` WHERE `community_name` = 'Overwatch');
-	INSERT INTO `posts` (`header`,`author_id`, `assembly_code`, `community_id`) VALUES 
-		('How to play with Gendzi', @author_id, 'PTPTV', @community_id);
-	SET @last_inserted_id = LAST_INSERT_ID();
-	INSERT INTO `content` (`post_id`, `content_type`, `assembly_number`, `metadata`, `body`, `filename`,`filelink`) VALUES 
-		(@last_inserted_id, 'P', 1, '{"size":"1280x720"}', NULL, 'gendzi.jpg', NULL),
-        (@last_inserted_id, 'T', 1, '{}', 'text text text', NULL, NULL),
-        (@last_inserted_id, 'P', 2, '{"size":"1280x720"}', NULL, 'hanzo.jpg', NULL),
-        (@last_inserted_id, 'T', 2, '{}', 'text text text', NULL, NULL),
-        (@last_inserted_id, 'V', 1, '{}', NULL, NULL, 'youtube.com/6489');
-	SET @tag_id = (SELECT `add_tag` ('overwatch'));
-	INSERT INTO `tagsets` (`tag_id`,`post_id`,`assembly_number`) VALUES (@tag_id, @last_inserted_id, 1);
-    
-	SET @tag_id = (SELECT `add_tag` ('gaming'));
-	INSERT INTO `tagsets` (`tag_id`,`post_id`,`assembly_number`) VALUES (@tag_id, @last_inserted_id, 2);
-    
-	SET @tag_id = (SELECT `add_tag` ('gendzi'));
-	INSERT INTO `tagsets` (`tag_id`,`post_id`,`assembly_number`) VALUES (@tag_id, @last_inserted_id, 3);
-    
-    SET @tag_id = (SELECT `add_tag` ('cybersport'));
-	INSERT INTO `tagsets` (`tag_id`,`post_id`,`assembly_number`) VALUES (@tag_id, @last_inserted_id, 4);
-    
-    SET @tag_id = (SELECT `add_tag` ('youtube'));
-	INSERT INTO `tagsets` (`tag_id`,`post_id`,`assembly_number`) VALUES (@tag_id, @last_inserted_id, 5);
-COMMIT;
-
-START TRANSACTION;
-	-- Кнопкой "Добавить коммент" или "Ответить" мы сделаем асинхронный запрос в БД и получим идентификатор
-    -- родительского коммента и идентификатор автора родительского коммента (или НУЛЬ если коммент к посту)
-	
-    SET @author_id = 1;
-    SET @post_id = 1;
-    SET @parent_cuid = NULL;
-    SET @parent_uid = NULL;
-
-	INSERT INTO `comments` (`post_id`,`user_id`,`assembly_code`) VALUES (@post_id, @author_id, 'T');
-    SET @lid = LAST_INSERT_ID();
-    INSERT INTO `content` (`comment_id`, `content_type`, `assembly_number`, `metadata`, `body`, `filename`,`filelink`)
-		VALUES (@lid, 'T', 1, '{}', 'Comment text', NULL, NULL);
-COMMIT;
-    
-# ASSESSMENTS / COMMENTS / SAVES
-
-
-#SELECT * FROM posts;
-#SELECT * FROM community_profiles;
-#SELECT * FROM content;
-#SELECT * FROM tags;
-#SELECT * FROM tagsets;
-
-
-
-#INSERT INTO `comments` (`post_id`,`user_id`) VALUES (1, 2), (2, 3), (3, 1);
-#INSERT INTO `assessments` (`user_id`,`post_id`,`assessment_type`) VALUES (1, 1, '+'),(2, 1, '+'),(3, 1, '-'),(4, 1, '-'),(5, 1, '+'),(6, 1, '+'),(7, 1, '+');
-#INSERT INTO `assessments` (`user_id`,`comment_id`,`assessment_type`) VALUES (5, 1, '+'),(6, 1, '+'),(5, 1, '+'),(5, 1, '+'),(5, 1, '+');
 /*
-Заметки на полях
-Механизм создания поста : пользователь кликает кнопку создать пост и переходит в форму создания поста
-С помощью ПОСТ переменных мы определим кто автор, это первое
-Пользователь пишет пост, добавляет картинки, тэги и нажимает "создать"
-Движок парсит то, что написал пользователь и распределяет всё по массивам
-Типа массив текстов, массив картинков, массив видео и массив тэгов
-Прогоняет каждый массив по циклам и создаёт некую строку и эту строку передаёт уже в транзакцию
-ВОПРОС : если движок передаст в PDO строку с транзакцией, то как сгенерировать уник айди
-Пусть с этим разбирается функция внутри мускула. Движок на основе парсинга лишь создаст строку
-Запускаем транзакцию
-1. генерируем айди ФУНКЦИЯ
-2. добавляем записи в таблицы поста, контента и тэгов ПРОЦЕДУРЫ
-3. поздравляем! ))
-С помощью генерации большого уникального числа нам не потребуется получать через ласт инсерт айди
-Потому что ласт инсерт айди чреват тем, что при большом количестве запросов мы можем получить не тот айдишник
-Сам механизм обернём в транзакцию
+########################################################
+Комментарий к транзакциям ниже :
+Пользователь создаёт пост (добавляет текст, картинки, видео и остальное)
+Нажимаем кнопку создать
+Парсер движка бэкенда создаёт массивы текстов, картинок, видео и тэгов. Отдельно в переменную сохраняет заголовок поста
+Идентификатор пользователя передаётся через POST когда мы заходим на страницу создания поста
+Затем парсер проходит циклами по всем массивам и создаёт строки запросов, оборачивает их в транзакцию и отдаёт функции PDO (PHP)
 
-
-
-
+Ниже в транзакции я проиллюстрирую ту строку, которую создаст парсер :
 */
+START TRANSACTION;
+	# Всю эту  будет формировать парсер и отдавать в PDO как строку
+	SET @post_pid = (SELECT `generate_id`());
+    
+	INSERT INTO `posts` (`pid`,`header`,`author_id`, `assembly_code`, `community_id`) VALUES
+		(@post_pid, 'How to create a post', 1, 'TPTP', 1);
+
+	INSERT INTO `content` (`post_id`, `content_type`, `assembly_number`, `metadata`, `body`, `filename`,`filelink`) VALUES 
+		(@post_pid, 'T', 1, '{}', 'First text block of the post', NULL, NULL),
+		(@post_pid, 'P', 1, '{"size":"600x600"}', NULL, 'opening_picture.jpg', NULL),
+		(@post_pid, 'T', 2, '{}', 'Second text block of the post', NULL, NULL),
+		(@post_pid, 'P', 2, '{"size":"600x600"}', NULL, 'ending_picture.jpg', NULL);
+
+	SET @tag_id = (SELECT `add_tag` ('helpdesk'));
+	INSERT INTO `tagsets` (`tag_id`,`post_id`,`assembly_number`) VALUES (@tag_id, @post_pid, 1);
+
+	SET @tag_id = (SELECT `add_tag` ('support'));
+	INSERT INTO `tagsets` (`tag_id`,`post_id`,`assembly_number`) VALUES (@tag_id, @post_pid, 2);
+
+	SET @tag_id = (SELECT `add_tag` ('supptech'));
+	INSERT INTO `tagsets` (`tag_id`,`post_id`,`assembly_number`) VALUES (@tag_id, @post_pid, 3);  
+COMMIT;
+##################################### Transactions Blocks
+START TRANSACTION;
+	SET @post_pid = (SELECT `generate_id`());
+	INSERT INTO `posts` (`pid`,`header`,`author_id`, `assembly_code`, `community_id`) VALUES 
+		(@post_pid, 'How not to get banned', 1, 'TPV', 1);
+	INSERT INTO `content` (`post_id`, `content_type`, `assembly_number`, `metadata`, `body`, `filename`,`filelink`) VALUES 
+		(@post_pid, 'T', 1, '{}', 'Blah-bla-blah', NULL, NULL),
+		(@post_pid, 'P', 1, '{"size":"600x600"}', NULL, 'opening_picture.jpg', NULL),
+		(@post_pid, 'V', 1, '{}', NULL, NULL, 'youtube.com/......');
+	SET @tag_id = (SELECT `add_tag` ('helpdesk'));INSERT INTO `tagsets` (`tag_id`,`post_id`,`assembly_number`) VALUES (@tag_id, @post_pid, 1);
+	SET @tag_id = (SELECT `add_tag` ('support'));INSERT INTO `tagsets` (`tag_id`,`post_id`,`assembly_number`) VALUES (@tag_id, @post_pid, 2);
+	SET @tag_id = (SELECT `add_tag` ('supptech'));INSERT INTO `tagsets` (`tag_id`,`post_id`,`assembly_number`) VALUES (@tag_id, @post_pid, 3);
+	SET @tag_id = (SELECT `add_tag` ('youtube'));INSERT INTO `tagsets` (`tag_id`,`post_id`,`assembly_number`) VALUES (@tag_id, @post_pid, 4);
+	SET @tag_id = (SELECT `add_tag` ('banhammer'));INSERT INTO `tagsets` (`tag_id`,`post_id`,`assembly_number`) VALUES (@tag_id, @post_pid, 5);
+COMMIT;
+START TRANSACTION;
+	SET @post_pid = (SELECT `generate_id`());
+	INSERT INTO `posts` (`pid`,`header`,`author_id`, `assembly_code`, `community_id`) VALUES 
+		(@post_pid, 'Live as Witcher', 10, 'TP', NULL);
+	INSERT INTO `content` (`post_id`, `content_type`, `assembly_number`, `metadata`, `body`, `filename`,`filelink`) VALUES 
+		(@post_pid, 'T', 1, '{}', 'If u want to live like ...', NULL, NULL),
+		(@post_pid, 'P', 1, '{"size":"1600x1600"}', NULL, 'sword.jpg', NULL);
+	SET @tag_id = (SELECT `add_tag` ('thewitcher'));INSERT INTO `tagsets` (`tag_id`,`post_id`,`assembly_number`) VALUES (@tag_id, @post_pid, 1);
+	SET @tag_id = (SELECT `add_tag` ('guide'));INSERT INTO `tagsets` (`tag_id`,`post_id`,`assembly_number`) VALUES (@tag_id, @post_pid, 2);
+	SET @tag_id = (SELECT `add_tag` ('fanart'));INSERT INTO `tagsets` (`tag_id`,`post_id`,`assembly_number`) VALUES (@tag_id, @post_pid, 3);
+COMMIT;
+START TRANSACTION;
+	SET @post_pid = (SELECT `generate_id`());
+	INSERT INTO `posts` (`pid`,`header`,`author_id`, `assembly_code`, `community_id`) VALUES 
+		(@post_pid, 'Stories about WW2', 3, 'TPTPTP', NULL);
+	INSERT INTO `content` (`post_id`, `content_type`, `assembly_number`, `metadata`, `body`, `filename`,`filelink`) VALUES 
+		(@post_pid, 'T', 1, '{}', 'Blah-bla-blah', NULL, NULL),
+		(@post_pid, 'P', 1, '{"size":"600x600"}', NULL, 'soldier1.jpg', NULL),
+		(@post_pid, 'T', 2, '{}', 'Blah-bla-blah', NULL, NULL),
+		(@post_pid, 'P', 2, '{"size":"600x600"}', NULL, 'soldier2.jpg', NULL),
+        (@post_pid, 'T', 1, '{}', 'Blah-bla-blah', NULL, NULL),
+		(@post_pid, 'P', 1, '{"size":"600x600"}', NULL, 'soldier3.jpg', NULL);
+	SET @tag_id = (SELECT `add_tag` ('ww2'));INSERT INTO `tagsets` (`tag_id`,`post_id`,`assembly_number`) VALUES (@tag_id, @post_pid, 1);
+	SET @tag_id = (SELECT `add_tag` ('soldiers'));INSERT INTO `tagsets` (`tag_id`,`post_id`,`assembly_number`) VALUES (@tag_id, @post_pid, 2);
+	SET @tag_id = (SELECT `add_tag` ('war'));INSERT INTO `tagsets` (`tag_id`,`post_id`,`assembly_number`) VALUES (@tag_id, @post_pid, 3);
+	SET @tag_id = (SELECT `add_tag` ('history'));INSERT INTO `tagsets` (`tag_id`,`post_id`,`assembly_number`) VALUES (@tag_id, @post_pid, 4);
+COMMIT;
+START TRANSACTION;
+	SET @post_pid = (SELECT `generate_id`());
+	INSERT INTO `posts` (`pid`,`header`,`author_id`, `assembly_code`, `community_id`) VALUES 
+		(@post_pid, 'Daenerys', 2, 'P', 4);
+	INSERT INTO `content` (`post_id`, `content_type`, `assembly_number`, `metadata`, `body`, `filename`,`filelink`) VALUES 
+		(@post_pid, 'P', 1, '{"size":"600x600"}', NULL, 'Daenerys_and_John.jpg', NULL);
+	SET @tag_id = (SELECT `add_tag` ('GOT'));INSERT INTO `tagsets` (`tag_id`,`post_id`,`assembly_number`) VALUES (@tag_id, @post_pid, 1);
+	SET @tag_id = (SELECT `add_tag` ('fanart'));INSERT INTO `tagsets` (`tag_id`,`post_id`,`assembly_number`) VALUES (@tag_id, @post_pid, 2);
+	SET @tag_id = (SELECT `add_tag` ('queen'));INSERT INTO `tagsets` (`tag_id`,`post_id`,`assembly_number`) VALUES (@tag_id, @post_pid, 3);
+COMMIT;
+START TRANSACTION;
+	SET @post_pid = (SELECT `generate_id`());
+	INSERT INTO `posts` (`pid`,`header`,`author_id`, `assembly_code`, `community_id`) VALUES 
+		(@post_pid, 'Littlefinger', 2, 'P', 4);
+	INSERT INTO `content` (`post_id`, `content_type`, `assembly_number`, `metadata`, `body`, `filename`,`filelink`) VALUES 
+		(@post_pid, 'P', 1, '{"size":"1280x720"}', NULL, 'Littlefinger_trying_to_spy.jpg', NULL);
+	SET @tag_id = (SELECT `add_tag` ('GOT'));INSERT INTO `tagsets` (`tag_id`,`post_id`,`assembly_number`) VALUES (@tag_id, @post_pid, 1);
+	SET @tag_id = (SELECT `add_tag` ('videomoment'));INSERT INTO `tagsets` (`tag_id`,`post_id`,`assembly_number`) VALUES (@tag_id, @post_pid, 2);
+	SET @tag_id = (SELECT `add_tag` ('spy'));INSERT INTO `tagsets` (`tag_id`,`post_id`,`assembly_number`) VALUES (@tag_id, @post_pid, 3);
+COMMIT;
+START TRANSACTION;
+	SET @post_pid = (SELECT `generate_id`());
+	INSERT INTO `posts` (`pid`,`header`,`author_id`, `assembly_code`, `community_id`) VALUES 
+		(@post_pid, 'Map of GOT', 2, 'PP', 4);
+	INSERT INTO `content` (`post_id`, `content_type`, `assembly_number`, `metadata`, `body`, `filename`,`filelink`) VALUES 
+		(@post_pid, 'P', 1, '{"size":"1280x720"}', NULL, 'Westeros.jpg', NULL),
+		(@post_pid, 'P', 2, '{"size":"1280x720"}', NULL, 'Essos.jpg', NULL);
+	SET @tag_id = (SELECT `add_tag` ('GOT'));INSERT INTO `tagsets` (`tag_id`,`post_id`,`assembly_number`) VALUES (@tag_id, @post_pid, 1);
+	SET @tag_id = (SELECT `add_tag` ('map'));INSERT INTO `tagsets` (`tag_id`,`post_id`,`assembly_number`) VALUES (@tag_id, @post_pid, 2);
+	SET @tag_id = (SELECT `add_tag` ('westeros'));INSERT INTO `tagsets` (`tag_id`,`post_id`,`assembly_number`) VALUES (@tag_id, @post_pid, 3);
+	SET @tag_id = (SELECT `add_tag` ('essos'));INSERT INTO `tagsets` (`tag_id`,`post_id`,`assembly_number`) VALUES (@tag_id, @post_pid, 4);
+COMMIT;
+START TRANSACTION;
+	SET @post_pid = (SELECT `generate_id`());
+	INSERT INTO `posts` (`pid`,`header`,`author_id`, `assembly_code`, `community_id`) VALUES 
+		(@post_pid, 'Brainhacking', 5, 'TP', NULL);
+	INSERT INTO `content` (`post_id`, `content_type`, `assembly_number`, `metadata`, `body`, `filename`,`filelink`) VALUES 
+		(@post_pid, 'T', 1, '{}', 'Blah blah blah', NULL, NULL),
+		(@post_pid, 'P', 1, '{"size":"1280x720"}', NULL, 'brain.jpg', NULL);
+	SET @tag_id = (SELECT `add_tag` ('hacking'));INSERT INTO `tagsets` (`tag_id`,`post_id`,`assembly_number`) VALUES (@tag_id, @post_pid, 1);
+	SET @tag_id = (SELECT `add_tag` ('brain'));INSERT INTO `tagsets` (`tag_id`,`post_id`,`assembly_number`) VALUES (@tag_id, @post_pid, 2);
+COMMIT;
+START TRANSACTION;
+	SET @post_pid = (SELECT `generate_id`());
+	INSERT INTO `posts` (`pid`,`header`,`author_id`, `assembly_code`, `community_id`) VALUES 
+		(@post_pid, 'How to get money easily', 5, 'T', NULL);
+	INSERT INTO `content` (`post_id`, `content_type`, `assembly_number`, `metadata`, `body`, `filename`,`filelink`) VALUES 
+		(@post_pid, 'T', 1, '{}', 'No way, dude -)', NULL, NULL);
+	SET @tag_id = (SELECT `add_tag` ('hacking'));INSERT INTO `tagsets` (`tag_id`,`post_id`,`assembly_number`) VALUES (@tag_id, @post_pid, 1);
+	SET @tag_id = (SELECT `add_tag` ('money'));INSERT INTO `tagsets` (`tag_id`,`post_id`,`assembly_number`) VALUES (@tag_id, @post_pid, 2);
+COMMIT;
+START TRANSACTION;
+	SET @post_pid = (SELECT `generate_id`());
+	INSERT INTO `posts` (`pid`,`header`,`author_id`, `assembly_code`, `community_id`) VALUES 
+		(@post_pid, 'How to play with Gendzi', 8, 'PTPTV', 8);
+	INSERT INTO `content` (`post_id`, `content_type`, `assembly_number`, `metadata`, `body`, `filename`,`filelink`) VALUES 
+		(@post_pid, 'P', 1, '{"size":"1280x720"}', NULL, 'gendzi.jpg', NULL),
+		(@post_pid, 'T', 1, '{}', 'text text text', NULL, NULL),
+        (@post_pid, 'P', 2, '{"size":"1280x720"}', NULL, 'hanzo.jpg', NULL),
+        (@post_pid, 'T', 2, '{}', 'text text text', NULL, NULL),
+		(@post_pid, 'V', 1, '{}', NULL, NULL, 'youtube.com/6489');
+	SET @tag_id = (SELECT `add_tag` ('overwatch'));INSERT INTO `tagsets` (`tag_id`,`post_id`,`assembly_number`) VALUES (@tag_id, @post_pid, 1);
+	SET @tag_id = (SELECT `add_tag` ('gaming'));INSERT INTO `tagsets` (`tag_id`,`post_id`,`assembly_number`) VALUES (@tag_id, @post_pid, 2);
+	SET @tag_id = (SELECT `add_tag` ('gendzi'));INSERT INTO `tagsets` (`tag_id`,`post_id`,`assembly_number`) VALUES (@tag_id, @post_pid, 3);
+	SET @tag_id = (SELECT `add_tag` ('cybersport'));INSERT INTO `tagsets` (`tag_id`,`post_id`,`assembly_number`) VALUES (@tag_id, @post_pid, 4);
+	SET @tag_id = (SELECT `add_tag` ('youtube'));INSERT INTO `tagsets` (`tag_id`,`post_id`,`assembly_number`) VALUES (@tag_id, @post_pid, 5);
+COMMIT;
+
+# Практически аналогичным образом добавляем комменты
+# Сначала будут комменты с родительским айди равным NULL, то-есть корневые комменты (относятся к поста, а не ответы на другие комменты)
+START TRANSACTION;
+	-- Учитывая, что у нас посты с большим десятизначным числом, мы будем просто получать случайный пост из тех что есть
+	SET @post_id = (SELECT `pid` FROM `posts` ORDER BY RAND() LIMIT 1);
+    -- Заодно и получим случайного пользователя, чтобы вручную не писать айди пользователя автора коммента
+    SET @user_id = (SELECT `uid` FROM `users` ORDER BY RAND() LIMIT 1);
+	SET @comment_id = (SELECT `generate_id`());
+
+	INSERT INTO `comments` (`cuid`,`post_id`,`user_id`,`assembly_code`,`parent_cuid`,`parent_uid`) VALUES (@comment_id, @post_id, @user_id, 'T', NULL, NULL);
+	INSERT INTO `content` (`comment_id`, `content_type`, `assembly_number`, `metadata`, `body`, `filename`,`filelink`)
+		VALUES (@comment_id, 'T', 1, '{}', 'Comment text', NULL, NULL);
+COMMIT;
+START TRANSACTION;
+	SET @post_id = (SELECT `pid` FROM `posts` ORDER BY RAND() LIMIT 1);SET @user_id = (SELECT `uid` FROM `users` ORDER BY RAND() LIMIT 1);SET @comment_id = (SELECT `generate_id`());
+	INSERT INTO `comments` (`cuid`,`post_id`,`user_id`,`assembly_code`,`parent_cuid`,`parent_uid`) VALUES (@comment_id, @post_id, @user_id, 'T', NULL, NULL);
+	INSERT INTO `content` (`comment_id`, `content_type`, `assembly_number`, `metadata`, `body`, `filename`,`filelink`) VALUES (@comment_id, 'T', 1, '{}', 'Comment text', NULL, NULL);
+COMMIT;
+START TRANSACTION;
+	SET @post_id = (SELECT `pid` FROM `posts` ORDER BY RAND() LIMIT 1);SET @user_id = (SELECT `uid` FROM `users` ORDER BY RAND() LIMIT 1);SET @comment_id = (SELECT `generate_id`());
+	INSERT INTO `comments` (`cuid`,`post_id`,`user_id`,`assembly_code`,`parent_cuid`,`parent_uid`) VALUES (@comment_id, @post_id, @user_id, 'T', NULL, NULL);
+	INSERT INTO `content` (`comment_id`, `content_type`, `assembly_number`, `metadata`, `body`, `filename`,`filelink`) VALUES (@comment_id, 'T', 1, '{}', 'Comment text', NULL, NULL);
+COMMIT;
+START TRANSACTION;
+	SET @post_id = (SELECT `pid` FROM `posts` ORDER BY RAND() LIMIT 1);SET @user_id = (SELECT `uid` FROM `users` ORDER BY RAND() LIMIT 1);SET @comment_id = (SELECT `generate_id`());
+	INSERT INTO `comments` (`cuid`,`post_id`,`user_id`,`assembly_code`,`parent_cuid`,`parent_uid`) VALUES (@comment_id, @post_id, @user_id, 'T', NULL, NULL);
+	INSERT INTO `content` (`comment_id`, `content_type`, `assembly_number`, `metadata`, `body`, `filename`,`filelink`) VALUES (@comment_id, 'T', 1, '{}', 'Comment text', NULL, NULL);
+COMMIT;
+START TRANSACTION;
+	SET @post_id = (SELECT `pid` FROM `posts` ORDER BY RAND() LIMIT 1);SET @user_id = (SELECT `uid` FROM `users` ORDER BY RAND() LIMIT 1);SET @comment_id = (SELECT `generate_id`());
+	INSERT INTO `comments` (`cuid`,`post_id`,`user_id`,`assembly_code`,`parent_cuid`,`parent_uid`) VALUES (@comment_id, @post_id, @user_id, 'T', NULL, NULL);
+	INSERT INTO `content` (`comment_id`, `content_type`, `assembly_number`, `metadata`, `body`, `filename`,`filelink`) VALUES (@comment_id, 'T', 1, '{}', 'Comment text', NULL, NULL);
+COMMIT;
+START TRANSACTION;
+	SET @post_id = (SELECT `pid` FROM `posts` ORDER BY RAND() LIMIT 1);SET @user_id = (SELECT `uid` FROM `users` ORDER BY RAND() LIMIT 1);SET @comment_id = (SELECT `generate_id`());
+	INSERT INTO `comments` (`cuid`,`post_id`,`user_id`,`assembly_code`,`parent_cuid`,`parent_uid`) VALUES (@comment_id, @post_id, @user_id, 'T', NULL, NULL);
+	INSERT INTO `content` (`comment_id`, `content_type`, `assembly_number`, `metadata`, `body`, `filename`,`filelink`) VALUES (@comment_id, 'T', 1, '{}', 'Comment text', NULL, NULL);
+COMMIT;
+START TRANSACTION;
+	SET @post_id = (SELECT `pid` FROM `posts` ORDER BY RAND() LIMIT 1);SET @user_id = (SELECT `uid` FROM `users` ORDER BY RAND() LIMIT 1);SET @comment_id = (SELECT `generate_id`());
+	INSERT INTO `comments` (`cuid`,`post_id`,`user_id`,`assembly_code`,`parent_cuid`,`parent_uid`) VALUES (@comment_id, @post_id, @user_id, 'T', NULL, NULL);
+	INSERT INTO `content` (`comment_id`, `content_type`, `assembly_number`, `metadata`, `body`, `filename`,`filelink`) VALUES (@comment_id, 'T', 1, '{}', 'Comment text', NULL, NULL);
+COMMIT;
+START TRANSACTION;
+	SET @post_id = (SELECT `pid` FROM `posts` ORDER BY RAND() LIMIT 1);SET @user_id = (SELECT `uid` FROM `users` ORDER BY RAND() LIMIT 1);SET @comment_id = (SELECT `generate_id`());
+	INSERT INTO `comments` (`cuid`,`post_id`,`user_id`,`assembly_code`,`parent_cuid`,`parent_uid`) VALUES (@comment_id, @post_id, @user_id, 'T', NULL, NULL);
+	INSERT INTO `content` (`comment_id`, `content_type`, `assembly_number`, `metadata`, `body`, `filename`,`filelink`) VALUES (@comment_id, 'T', 1, '{}', 'Comment text', NULL, NULL);
+COMMIT;
+START TRANSACTION;
+	SET @post_id = (SELECT `pid` FROM `posts` ORDER BY RAND() LIMIT 1);SET @user_id = (SELECT `uid` FROM `users` ORDER BY RAND() LIMIT 1);SET @comment_id = (SELECT `generate_id`());
+	INSERT INTO `comments` (`cuid`,`post_id`,`user_id`,`assembly_code`,`parent_cuid`,`parent_uid`) VALUES (@comment_id, @post_id, @user_id, 'T', NULL, NULL);
+	INSERT INTO `content` (`comment_id`, `content_type`, `assembly_number`, `metadata`, `body`, `filename`,`filelink`) VALUES (@comment_id, 'T', 1, '{}', 'Comment text', NULL, NULL);
+COMMIT;
+START TRANSACTION;
+	SET @post_id = (SELECT `pid` FROM `posts` ORDER BY RAND() LIMIT 1);SET @user_id = (SELECT `uid` FROM `users` ORDER BY RAND() LIMIT 1);SET @comment_id = (SELECT `generate_id`());
+	INSERT INTO `comments` (`cuid`,`post_id`,`user_id`,`assembly_code`,`parent_cuid`,`parent_uid`) VALUES (@comment_id, @post_id, @user_id, 'T', NULL, NULL);
+	INSERT INTO `content` (`comment_id`, `content_type`, `assembly_number`, `metadata`, `body`, `filename`,`filelink`) VALUES (@comment_id, 'T', 1, '{}', 'Comment text', NULL, NULL);
+COMMIT;
+START TRANSACTION;
+	SET @post_id = (SELECT `pid` FROM `posts` ORDER BY RAND() LIMIT 1);SET @user_id = (SELECT `uid` FROM `users` ORDER BY RAND() LIMIT 1);SET @comment_id = (SELECT `generate_id`());
+	INSERT INTO `comments` (`cuid`,`post_id`,`user_id`,`assembly_code`,`parent_cuid`,`parent_uid`) VALUES (@comment_id, @post_id, @user_id, 'T', NULL, NULL);
+	INSERT INTO `content` (`comment_id`, `content_type`, `assembly_number`, `metadata`, `body`, `filename`,`filelink`) VALUES (@comment_id, 'T', 1, '{}', 'Comment text', NULL, NULL);
+COMMIT;
+START TRANSACTION;
+	SET @post_id = (SELECT `pid` FROM `posts` ORDER BY RAND() LIMIT 1);SET @user_id = (SELECT `uid` FROM `users` ORDER BY RAND() LIMIT 1);SET @comment_id = (SELECT `generate_id`());
+	INSERT INTO `comments` (`cuid`,`post_id`,`user_id`,`assembly_code`,`parent_cuid`,`parent_uid`) VALUES (@comment_id, @post_id, @user_id, 'T', NULL, NULL);
+	INSERT INTO `content` (`comment_id`, `content_type`, `assembly_number`, `metadata`, `body`, `filename`,`filelink`) VALUES (@comment_id, 'T', 1, '{}', 'Comment text', NULL, NULL);
+COMMIT;
+START TRANSACTION;
+	SET @post_id = (SELECT `pid` FROM `posts` ORDER BY RAND() LIMIT 1);SET @user_id = (SELECT `uid` FROM `users` ORDER BY RAND() LIMIT 1);SET @comment_id = (SELECT `generate_id`());
+	INSERT INTO `comments` (`cuid`,`post_id`,`user_id`,`assembly_code`,`parent_cuid`,`parent_uid`) VALUES (@comment_id, @post_id, @user_id, 'T', NULL, NULL);
+	INSERT INTO `content` (`comment_id`, `content_type`, `assembly_number`, `metadata`, `body`, `filename`,`filelink`) VALUES (@comment_id, 'T', 1, '{}', 'Comment text', NULL, NULL);
+COMMIT;
+START TRANSACTION;
+	SET @post_id = (SELECT `pid` FROM `posts` ORDER BY RAND() LIMIT 1);SET @user_id = (SELECT `uid` FROM `users` ORDER BY RAND() LIMIT 1);SET @comment_id = (SELECT `generate_id`());
+	INSERT INTO `comments` (`cuid`,`post_id`,`user_id`,`assembly_code`,`parent_cuid`,`parent_uid`) VALUES (@comment_id, @post_id, @user_id, 'T', NULL, NULL);
+	INSERT INTO `content` (`comment_id`, `content_type`, `assembly_number`, `metadata`, `body`, `filename`,`filelink`) VALUES (@comment_id, 'T', 1, '{}', 'Comment text', NULL, NULL);
+COMMIT;
+START TRANSACTION;
+	SET @post_id = (SELECT `pid` FROM `posts` ORDER BY RAND() LIMIT 1);SET @user_id = (SELECT `uid` FROM `users` ORDER BY RAND() LIMIT 1);SET @comment_id = (SELECT `generate_id`());
+	INSERT INTO `comments` (`cuid`,`post_id`,`user_id`,`assembly_code`,`parent_cuid`,`parent_uid`) VALUES (@comment_id, @post_id, @user_id, 'T', NULL, NULL);
+	INSERT INTO `content` (`comment_id`, `content_type`, `assembly_number`, `metadata`, `body`, `filename`,`filelink`) VALUES (@comment_id, 'T', 1, '{}', 'Comment text', NULL, NULL);
+COMMIT;
+
+# Добавим ещё немного комментов - ответов, то-есть где родительский айди не NULL
+START TRANSACTION;
+	SET @post_id = (SELECT `pid` FROM `posts` ORDER BY RAND() LIMIT 1);
+	SET @user_id = (SELECT `uid` FROM `users` ORDER BY RAND() LIMIT 1);
+
+	SET @parent_cuid = (SELECT `cuid` FROM `comments` ORDER BY RAND() LIMIT 1);
+	SET @parent_uid = (SELECT `user_id` FROM `comments` WHERE `cuid` = @parent_cuid);
+
+	SET @comment_id = (SELECT `generate_id`());
+	INSERT INTO `comments` (`cuid`,`post_id`,`user_id`,`assembly_code`,`parent_cuid`,`parent_uid`) 
+		VALUES (@comment_id, @post_id, @user_id, 'T', @parent_cuid, @parent_uid);
+	INSERT INTO `content` (`comment_id`, `content_type`, `assembly_number`, `metadata`, `body`, `filename`,`filelink`) VALUES (@comment_id, 'T', 1, '{}', 'Comment text', NULL, NULL);
+COMMIT;
+START TRANSACTION;
+	SET @post_id = (SELECT `pid` FROM `posts` ORDER BY RAND() LIMIT 1);SET @user_id = (SELECT `uid` FROM `users` ORDER BY RAND() LIMIT 1);SET @parent_cuid = (SELECT `cuid` FROM `comments` ORDER BY RAND() LIMIT 1);SET @parent_uid = (SELECT `user_id` FROM `comments` WHERE `cuid` = @parent_cuid);SET @comment_id = (SELECT `generate_id`());
+	INSERT INTO `comments` (`cuid`,`post_id`,`user_id`,`assembly_code`,`parent_cuid`,`parent_uid`) VALUES (@comment_id, @post_id, @user_id, 'T', @parent_cuid, @parent_uid);
+	INSERT INTO `content` (`comment_id`, `content_type`, `assembly_number`, `metadata`, `body`, `filename`,`filelink`) VALUES (@comment_id, 'T', 1, '{}', 'Comment text', NULL, NULL);
+COMMIT;
+START TRANSACTION;
+	SET @post_id = (SELECT `pid` FROM `posts` ORDER BY RAND() LIMIT 1);SET @user_id = (SELECT `uid` FROM `users` ORDER BY RAND() LIMIT 1);SET @parent_cuid = (SELECT `cuid` FROM `comments` ORDER BY RAND() LIMIT 1);SET @parent_uid = (SELECT `user_id` FROM `comments` WHERE `cuid` = @parent_cuid);SET @comment_id = (SELECT `generate_id`());
+	INSERT INTO `comments` (`cuid`,`post_id`,`user_id`,`assembly_code`,`parent_cuid`,`parent_uid`) VALUES (@comment_id, @post_id, @user_id, 'T', @parent_cuid, @parent_uid);
+	INSERT INTO `content` (`comment_id`, `content_type`, `assembly_number`, `metadata`, `body`, `filename`,`filelink`) VALUES (@comment_id, 'T', 1, '{}', 'Comment text', NULL, NULL);
+COMMIT;
+START TRANSACTION;
+	SET @post_id = (SELECT `pid` FROM `posts` ORDER BY RAND() LIMIT 1);SET @user_id = (SELECT `uid` FROM `users` ORDER BY RAND() LIMIT 1);SET @parent_cuid = (SELECT `cuid` FROM `comments` ORDER BY RAND() LIMIT 1);SET @parent_uid = (SELECT `user_id` FROM `comments` WHERE `cuid` = @parent_cuid);SET @comment_id = (SELECT `generate_id`());
+	INSERT INTO `comments` (`cuid`,`post_id`,`user_id`,`assembly_code`,`parent_cuid`,`parent_uid`) VALUES (@comment_id, @post_id, @user_id, 'T', @parent_cuid, @parent_uid);
+	INSERT INTO `content` (`comment_id`, `content_type`, `assembly_number`, `metadata`, `body`, `filename`,`filelink`) VALUES (@comment_id, 'T', 1, '{}', 'Comment text', NULL, NULL);
+COMMIT;
+START TRANSACTION;
+	SET @post_id = (SELECT `pid` FROM `posts` ORDER BY RAND() LIMIT 1);SET @user_id = (SELECT `uid` FROM `users` ORDER BY RAND() LIMIT 1);SET @parent_cuid = (SELECT `cuid` FROM `comments` ORDER BY RAND() LIMIT 1);SET @parent_uid = (SELECT `user_id` FROM `comments` WHERE `cuid` = @parent_cuid);SET @comment_id = (SELECT `generate_id`());
+	INSERT INTO `comments` (`cuid`,`post_id`,`user_id`,`assembly_code`,`parent_cuid`,`parent_uid`) VALUES (@comment_id, @post_id, @user_id, 'T', @parent_cuid, @parent_uid);
+	INSERT INTO `content` (`comment_id`, `content_type`, `assembly_number`, `metadata`, `body`, `filename`,`filelink`) VALUES (@comment_id, 'T', 1, '{}', 'Comment text', NULL, NULL);
+COMMIT;
+START TRANSACTION;
+	SET @post_id = (SELECT `pid` FROM `posts` ORDER BY RAND() LIMIT 1);SET @user_id = (SELECT `uid` FROM `users` ORDER BY RAND() LIMIT 1);SET @parent_cuid = (SELECT `cuid` FROM `comments` ORDER BY RAND() LIMIT 1);SET @parent_uid = (SELECT `user_id` FROM `comments` WHERE `cuid` = @parent_cuid);SET @comment_id = (SELECT `generate_id`());
+	INSERT INTO `comments` (`cuid`,`post_id`,`user_id`,`assembly_code`,`parent_cuid`,`parent_uid`) VALUES (@comment_id, @post_id, @user_id, 'T', @parent_cuid, @parent_uid);
+	INSERT INTO `content` (`comment_id`, `content_type`, `assembly_number`, `metadata`, `body`, `filename`,`filelink`) VALUES (@comment_id, 'T', 1, '{}', 'Comment text', NULL, NULL);
+COMMIT;
+START TRANSACTION;
+	SET @post_id = (SELECT `pid` FROM `posts` ORDER BY RAND() LIMIT 1);SET @user_id = (SELECT `uid` FROM `users` ORDER BY RAND() LIMIT 1);SET @parent_cuid = (SELECT `cuid` FROM `comments` ORDER BY RAND() LIMIT 1);SET @parent_uid = (SELECT `user_id` FROM `comments` WHERE `cuid` = @parent_cuid);SET @comment_id = (SELECT `generate_id`());
+	INSERT INTO `comments` (`cuid`,`post_id`,`user_id`,`assembly_code`,`parent_cuid`,`parent_uid`) VALUES (@comment_id, @post_id, @user_id, 'T', @parent_cuid, @parent_uid);
+	INSERT INTO `content` (`comment_id`, `content_type`, `assembly_number`, `metadata`, `body`, `filename`,`filelink`) VALUES (@comment_id, 'T', 1, '{}', 'Comment text', NULL, NULL);
+COMMIT;
+START TRANSACTION;
+	SET @post_id = (SELECT `pid` FROM `posts` ORDER BY RAND() LIMIT 1);SET @user_id = (SELECT `uid` FROM `users` ORDER BY RAND() LIMIT 1);SET @parent_cuid = (SELECT `cuid` FROM `comments` ORDER BY RAND() LIMIT 1);SET @parent_uid = (SELECT `user_id` FROM `comments` WHERE `cuid` = @parent_cuid);SET @comment_id = (SELECT `generate_id`());
+	INSERT INTO `comments` (`cuid`,`post_id`,`user_id`,`assembly_code`,`parent_cuid`,`parent_uid`) VALUES (@comment_id, @post_id, @user_id, 'T', @parent_cuid, @parent_uid);
+	INSERT INTO `content` (`comment_id`, `content_type`, `assembly_number`, `metadata`, `body`, `filename`,`filelink`) VALUES (@comment_id, 'T', 1, '{}', 'Comment text', NULL, NULL);
+COMMIT;
+START TRANSACTION;
+	SET @post_id = (SELECT `pid` FROM `posts` ORDER BY RAND() LIMIT 1);SET @user_id = (SELECT `uid` FROM `users` ORDER BY RAND() LIMIT 1);SET @parent_cuid = (SELECT `cuid` FROM `comments` ORDER BY RAND() LIMIT 1);SET @parent_uid = (SELECT `user_id` FROM `comments` WHERE `cuid` = @parent_cuid);SET @comment_id = (SELECT `generate_id`());
+	INSERT INTO `comments` (`cuid`,`post_id`,`user_id`,`assembly_code`,`parent_cuid`,`parent_uid`) VALUES (@comment_id, @post_id, @user_id, 'T', @parent_cuid, @parent_uid);
+	INSERT INTO `content` (`comment_id`, `content_type`, `assembly_number`, `metadata`, `body`, `filename`,`filelink`) VALUES (@comment_id, 'T', 1, '{}', 'Comment text', NULL, NULL);
+COMMIT;
+START TRANSACTION;
+	SET @post_id = (SELECT `pid` FROM `posts` ORDER BY RAND() LIMIT 1);SET @user_id = (SELECT `uid` FROM `users` ORDER BY RAND() LIMIT 1);SET @parent_cuid = (SELECT `cuid` FROM `comments` ORDER BY RAND() LIMIT 1);SET @parent_uid = (SELECT `user_id` FROM `comments` WHERE `cuid` = @parent_cuid);SET @comment_id = (SELECT `generate_id`());
+	INSERT INTO `comments` (`cuid`,`post_id`,`user_id`,`assembly_code`,`parent_cuid`,`parent_uid`) VALUES (@comment_id, @post_id, @user_id, 'T', @parent_cuid, @parent_uid);
+	INSERT INTO `content` (`comment_id`, `content_type`, `assembly_number`, `metadata`, `body`, `filename`,`filelink`) VALUES (@comment_id, 'T', 1, '{}', 'Comment text', NULL, NULL);
+COMMIT;
+START TRANSACTION;
+	SET @post_id = (SELECT `pid` FROM `posts` ORDER BY RAND() LIMIT 1);SET @user_id = (SELECT `uid` FROM `users` ORDER BY RAND() LIMIT 1);SET @parent_cuid = (SELECT `cuid` FROM `comments` ORDER BY RAND() LIMIT 1);SET @parent_uid = (SELECT `user_id` FROM `comments` WHERE `cuid` = @parent_cuid);SET @comment_id = (SELECT `generate_id`());
+	INSERT INTO `comments` (`cuid`,`post_id`,`user_id`,`assembly_code`,`parent_cuid`,`parent_uid`) VALUES (@comment_id, @post_id, @user_id, 'T', @parent_cuid, @parent_uid);
+	INSERT INTO `content` (`comment_id`, `content_type`, `assembly_number`, `metadata`, `body`, `filename`,`filelink`) VALUES (@comment_id, 'T', 1, '{}', 'Comment text', NULL, NULL);
+COMMIT;
+START TRANSACTION;
+	SET @post_id = (SELECT `pid` FROM `posts` ORDER BY RAND() LIMIT 1);SET @user_id = (SELECT `uid` FROM `users` ORDER BY RAND() LIMIT 1);SET @parent_cuid = (SELECT `cuid` FROM `comments` ORDER BY RAND() LIMIT 1);SET @parent_uid = (SELECT `user_id` FROM `comments` WHERE `cuid` = @parent_cuid);SET @comment_id = (SELECT `generate_id`());
+	INSERT INTO `comments` (`cuid`,`post_id`,`user_id`,`assembly_code`,`parent_cuid`,`parent_uid`) VALUES (@comment_id, @post_id, @user_id, 'T', @parent_cuid, @parent_uid);
+	INSERT INTO `content` (`comment_id`, `content_type`, `assembly_number`, `metadata`, `body`, `filename`,`filelink`) VALUES (@comment_id, 'T', 1, '{}', 'Comment text', NULL, NULL);
+COMMIT;
+START TRANSACTION;
+	SET @post_id = (SELECT `pid` FROM `posts` ORDER BY RAND() LIMIT 1);SET @user_id = (SELECT `uid` FROM `users` ORDER BY RAND() LIMIT 1);SET @parent_cuid = (SELECT `cuid` FROM `comments` ORDER BY RAND() LIMIT 1);SET @parent_uid = (SELECT `user_id` FROM `comments` WHERE `cuid` = @parent_cuid);SET @comment_id = (SELECT `generate_id`());
+	INSERT INTO `comments` (`cuid`,`post_id`,`user_id`,`assembly_code`,`parent_cuid`,`parent_uid`) VALUES (@comment_id, @post_id, @user_id, 'T', @parent_cuid, @parent_uid);
+	INSERT INTO `content` (`comment_id`, `content_type`, `assembly_number`, `metadata`, `body`, `filename`,`filelink`) VALUES (@comment_id, 'T', 1, '{}', 'Comment text', NULL, NULL);
+COMMIT;
+START TRANSACTION;
+	SET @post_id = (SELECT `pid` FROM `posts` ORDER BY RAND() LIMIT 1);SET @user_id = (SELECT `uid` FROM `users` ORDER BY RAND() LIMIT 1);SET @parent_cuid = (SELECT `cuid` FROM `comments` ORDER BY RAND() LIMIT 1);SET @parent_uid = (SELECT `user_id` FROM `comments` WHERE `cuid` = @parent_cuid);SET @comment_id = (SELECT `generate_id`());
+	INSERT INTO `comments` (`cuid`,`post_id`,`user_id`,`assembly_code`,`parent_cuid`,`parent_uid`) VALUES (@comment_id, @post_id, @user_id, 'T', @parent_cuid, @parent_uid);
+	INSERT INTO `content` (`comment_id`, `content_type`, `assembly_number`, `metadata`, `body`, `filename`,`filelink`) VALUES (@comment_id, 'T', 1, '{}', 'Comment text', NULL, NULL);
+COMMIT;
+START TRANSACTION;
+	SET @post_id = (SELECT `pid` FROM `posts` ORDER BY RAND() LIMIT 1);SET @user_id = (SELECT `uid` FROM `users` ORDER BY RAND() LIMIT 1);SET @parent_cuid = (SELECT `cuid` FROM `comments` ORDER BY RAND() LIMIT 1);SET @parent_uid = (SELECT `user_id` FROM `comments` WHERE `cuid` = @parent_cuid);SET @comment_id = (SELECT `generate_id`());
+	INSERT INTO `comments` (`cuid`,`post_id`,`user_id`,`assembly_code`,`parent_cuid`,`parent_uid`) VALUES (@comment_id, @post_id, @user_id, 'T', @parent_cuid, @parent_uid);
+	INSERT INTO `content` (`comment_id`, `content_type`, `assembly_number`, `metadata`, `body`, `filename`,`filelink`) VALUES (@comment_id, 'T', 1, '{}', 'Comment text', NULL, NULL);
+COMMIT;
+START TRANSACTION;
+	SET @post_id = (SELECT `pid` FROM `posts` ORDER BY RAND() LIMIT 1);SET @user_id = (SELECT `uid` FROM `users` ORDER BY RAND() LIMIT 1);SET @parent_cuid = (SELECT `cuid` FROM `comments` ORDER BY RAND() LIMIT 1);SET @parent_uid = (SELECT `user_id` FROM `comments` WHERE `cuid` = @parent_cuid);SET @comment_id = (SELECT `generate_id`());
+	INSERT INTO `comments` (`cuid`,`post_id`,`user_id`,`assembly_code`,`parent_cuid`,`parent_uid`) VALUES (@comment_id, @post_id, @user_id, 'T', @parent_cuid, @parent_uid);
+	INSERT INTO `content` (`comment_id`, `content_type`, `assembly_number`, `metadata`, `body`, `filename`,`filelink`) VALUES (@comment_id, 'T', 1, '{}', 'Comment text', NULL, NULL);
+COMMIT;
+START TRANSACTION;
+	SET @post_id = (SELECT `pid` FROM `posts` ORDER BY RAND() LIMIT 1);SET @user_id = (SELECT `uid` FROM `users` ORDER BY RAND() LIMIT 1);SET @parent_cuid = (SELECT `cuid` FROM `comments` ORDER BY RAND() LIMIT 1);SET @parent_uid = (SELECT `user_id` FROM `comments` WHERE `cuid` = @parent_cuid);SET @comment_id = (SELECT `generate_id`());
+	INSERT INTO `comments` (`cuid`,`post_id`,`user_id`,`assembly_code`,`parent_cuid`,`parent_uid`) VALUES (@comment_id, @post_id, @user_id, 'T', @parent_cuid, @parent_uid);
+	INSERT INTO `content` (`comment_id`, `content_type`, `assembly_number`, `metadata`, `body`, `filename`,`filelink`) VALUES (@comment_id, 'T', 1, '{}', 'Comment text', NULL, NULL);
+COMMIT;
+START TRANSACTION;
+	SET @post_id = (SELECT `pid` FROM `posts` ORDER BY RAND() LIMIT 1);SET @user_id = (SELECT `uid` FROM `users` ORDER BY RAND() LIMIT 1);SET @parent_cuid = (SELECT `cuid` FROM `comments` ORDER BY RAND() LIMIT 1);SET @parent_uid = (SELECT `user_id` FROM `comments` WHERE `cuid` = @parent_cuid);SET @comment_id = (SELECT `generate_id`());
+	INSERT INTO `comments` (`cuid`,`post_id`,`user_id`,`assembly_code`,`parent_cuid`,`parent_uid`) VALUES (@comment_id, @post_id, @user_id, 'T', @parent_cuid, @parent_uid);
+	INSERT INTO `content` (`comment_id`, `content_type`, `assembly_number`, `metadata`, `body`, `filename`,`filelink`) VALUES (@comment_id, 'T', 1, '{}', 'Comment text', NULL, NULL);
+COMMIT;
+START TRANSACTION;
+	SET @post_id = (SELECT `pid` FROM `posts` ORDER BY RAND() LIMIT 1);SET @user_id = (SELECT `uid` FROM `users` ORDER BY RAND() LIMIT 1);SET @parent_cuid = (SELECT `cuid` FROM `comments` ORDER BY RAND() LIMIT 1);SET @parent_uid = (SELECT `user_id` FROM `comments` WHERE `cuid` = @parent_cuid);SET @comment_id = (SELECT `generate_id`());
+	INSERT INTO `comments` (`cuid`,`post_id`,`user_id`,`assembly_code`,`parent_cuid`,`parent_uid`) VALUES (@comment_id, @post_id, @user_id, 'T', @parent_cuid, @parent_uid);
+	INSERT INTO `content` (`comment_id`, `content_type`, `assembly_number`, `metadata`, `body`, `filename`,`filelink`) VALUES (@comment_id, 'T', 1, '{}', 'Comment text', NULL, NULL);
+COMMIT;
+START TRANSACTION;
+	SET @post_id = (SELECT `pid` FROM `posts` ORDER BY RAND() LIMIT 1);SET @user_id = (SELECT `uid` FROM `users` ORDER BY RAND() LIMIT 1);SET @parent_cuid = (SELECT `cuid` FROM `comments` ORDER BY RAND() LIMIT 1);SET @parent_uid = (SELECT `user_id` FROM `comments` WHERE `cuid` = @parent_cuid);SET @comment_id = (SELECT `generate_id`());
+	INSERT INTO `comments` (`cuid`,`post_id`,`user_id`,`assembly_code`,`parent_cuid`,`parent_uid`) VALUES (@comment_id, @post_id, @user_id, 'T', @parent_cuid, @parent_uid);
+	INSERT INTO `content` (`comment_id`, `content_type`, `assembly_number`, `metadata`, `body`, `filename`,`filelink`) VALUES (@comment_id, 'T', 1, '{}', 'Comment text', NULL, NULL);
+COMMIT;
+START TRANSACTION;
+	SET @post_id = (SELECT `pid` FROM `posts` ORDER BY RAND() LIMIT 1);SET @user_id = (SELECT `uid` FROM `users` ORDER BY RAND() LIMIT 1);SET @parent_cuid = (SELECT `cuid` FROM `comments` ORDER BY RAND() LIMIT 1);SET @parent_uid = (SELECT `user_id` FROM `comments` WHERE `cuid` = @parent_cuid);SET @comment_id = (SELECT `generate_id`());
+	INSERT INTO `comments` (`cuid`,`post_id`,`user_id`,`assembly_code`,`parent_cuid`,`parent_uid`) VALUES (@comment_id, @post_id, @user_id, 'T', @parent_cuid, @parent_uid);
+	INSERT INTO `content` (`comment_id`, `content_type`, `assembly_number`, `metadata`, `body`, `filename`,`filelink`) VALUES (@comment_id, 'T', 1, '{}', 'Comment text', NULL, NULL);
+COMMIT;
+START TRANSACTION;
+	SET @post_id = (SELECT `pid` FROM `posts` ORDER BY RAND() LIMIT 1);SET @user_id = (SELECT `uid` FROM `users` ORDER BY RAND() LIMIT 1);SET @parent_cuid = (SELECT `cuid` FROM `comments` ORDER BY RAND() LIMIT 1);SET @parent_uid = (SELECT `user_id` FROM `comments` WHERE `cuid` = @parent_cuid);SET @comment_id = (SELECT `generate_id`());
+	INSERT INTO `comments` (`cuid`,`post_id`,`user_id`,`assembly_code`,`parent_cuid`,`parent_uid`) VALUES (@comment_id, @post_id, @user_id, 'T', @parent_cuid, @parent_uid);
+	INSERT INTO `content` (`comment_id`, `content_type`, `assembly_number`, `metadata`, `body`, `filename`,`filelink`) VALUES (@comment_id, 'T', 1, '{}', 'Comment text', NULL, NULL);
+COMMIT;
+START TRANSACTION;
+	SET @post_id = (SELECT `pid` FROM `posts` ORDER BY RAND() LIMIT 1);SET @user_id = (SELECT `uid` FROM `users` ORDER BY RAND() LIMIT 1);SET @parent_cuid = (SELECT `cuid` FROM `comments` ORDER BY RAND() LIMIT 1);SET @parent_uid = (SELECT `user_id` FROM `comments` WHERE `cuid` = @parent_cuid);SET @comment_id = (SELECT `generate_id`());
+	INSERT INTO `comments` (`cuid`,`post_id`,`user_id`,`assembly_code`,`parent_cuid`,`parent_uid`) VALUES (@comment_id, @post_id, @user_id, 'T', @parent_cuid, @parent_uid);
+	INSERT INTO `content` (`comment_id`, `content_type`, `assembly_number`, `metadata`, `body`, `filename`,`filelink`) VALUES (@comment_id, 'T', 1, '{}', 'Comment text', NULL, NULL);
+COMMIT;
+START TRANSACTION;
+	SET @post_id = (SELECT `pid` FROM `posts` ORDER BY RAND() LIMIT 1);SET @user_id = (SELECT `uid` FROM `users` ORDER BY RAND() LIMIT 1);SET @parent_cuid = (SELECT `cuid` FROM `comments` ORDER BY RAND() LIMIT 1);SET @parent_uid = (SELECT `user_id` FROM `comments` WHERE `cuid` = @parent_cuid);SET @comment_id = (SELECT `generate_id`());
+	INSERT INTO `comments` (`cuid`,`post_id`,`user_id`,`assembly_code`,`parent_cuid`,`parent_uid`) VALUES (@comment_id, @post_id, @user_id, 'T', @parent_cuid, @parent_uid);
+	INSERT INTO `content` (`comment_id`, `content_type`, `assembly_number`, `metadata`, `body`, `filename`,`filelink`) VALUES (@comment_id, 'T', 1, '{}', 'Comment text', NULL, NULL);
+COMMIT;
+START TRANSACTION;
+	SET @post_id = (SELECT `pid` FROM `posts` ORDER BY RAND() LIMIT 1);SET @user_id = (SELECT `uid` FROM `users` ORDER BY RAND() LIMIT 1);SET @parent_cuid = (SELECT `cuid` FROM `comments` ORDER BY RAND() LIMIT 1);SET @parent_uid = (SELECT `user_id` FROM `comments` WHERE `cuid` = @parent_cuid);SET @comment_id = (SELECT `generate_id`());
+	INSERT INTO `comments` (`cuid`,`post_id`,`user_id`,`assembly_code`,`parent_cuid`,`parent_uid`) VALUES (@comment_id, @post_id, @user_id, 'T', @parent_cuid, @parent_uid);
+	INSERT INTO `content` (`comment_id`, `content_type`, `assembly_number`, `metadata`, `body`, `filename`,`filelink`) VALUES (@comment_id, 'T', 1, '{}', 'Comment text', NULL, NULL);
+COMMIT;
+START TRANSACTION;
+	SET @post_id = (SELECT `pid` FROM `posts` ORDER BY RAND() LIMIT 1);SET @user_id = (SELECT `uid` FROM `users` ORDER BY RAND() LIMIT 1);SET @parent_cuid = (SELECT `cuid` FROM `comments` ORDER BY RAND() LIMIT 1);SET @parent_uid = (SELECT `user_id` FROM `comments` WHERE `cuid` = @parent_cuid);SET @comment_id = (SELECT `generate_id`());
+	INSERT INTO `comments` (`cuid`,`post_id`,`user_id`,`assembly_code`,`parent_cuid`,`parent_uid`) VALUES (@comment_id, @post_id, @user_id, 'T', @parent_cuid, @parent_uid);
+	INSERT INTO `content` (`comment_id`, `content_type`, `assembly_number`, `metadata`, `body`, `filename`,`filelink`) VALUES (@comment_id, 'T', 1, '{}', 'Comment text', NULL, NULL);
+COMMIT;
+START TRANSACTION;
+	SET @post_id = (SELECT `pid` FROM `posts` ORDER BY RAND() LIMIT 1);SET @user_id = (SELECT `uid` FROM `users` ORDER BY RAND() LIMIT 1);SET @parent_cuid = (SELECT `cuid` FROM `comments` ORDER BY RAND() LIMIT 1);SET @parent_uid = (SELECT `user_id` FROM `comments` WHERE `cuid` = @parent_cuid);SET @comment_id = (SELECT `generate_id`());
+	INSERT INTO `comments` (`cuid`,`post_id`,`user_id`,`assembly_code`,`parent_cuid`,`parent_uid`) VALUES (@comment_id, @post_id, @user_id, 'T', @parent_cuid, @parent_uid);
+	INSERT INTO `content` (`comment_id`, `content_type`, `assembly_number`, `metadata`, `body`, `filename`,`filelink`) VALUES (@comment_id, 'T', 1, '{}', 'Comment text', NULL, NULL);
+COMMIT;
+START TRANSACTION;
+	SET @post_id = (SELECT `pid` FROM `posts` ORDER BY RAND() LIMIT 1);SET @user_id = (SELECT `uid` FROM `users` ORDER BY RAND() LIMIT 1);SET @parent_cuid = (SELECT `cuid` FROM `comments` ORDER BY RAND() LIMIT 1);SET @parent_uid = (SELECT `user_id` FROM `comments` WHERE `cuid` = @parent_cuid);SET @comment_id = (SELECT `generate_id`());
+	INSERT INTO `comments` (`cuid`,`post_id`,`user_id`,`assembly_code`,`parent_cuid`,`parent_uid`) VALUES (@comment_id, @post_id, @user_id, 'T', @parent_cuid, @parent_uid);
+	INSERT INTO `content` (`comment_id`, `content_type`, `assembly_number`, `metadata`, `body`, `filename`,`filelink`) VALUES (@comment_id, 'T', 1, '{}', 'Comment text', NULL, NULL);
+COMMIT;
+
+# И несколько комментов с не просто текстовым содержимым, а с картинками
+START TRANSACTION;
+	SET @post_id = (SELECT `pid` FROM `posts` ORDER BY RAND() LIMIT 1);
+	SET @user_id = (SELECT `uid` FROM `users` ORDER BY RAND() LIMIT 1);
+	SET @parent_cuid = NULL;
+	SET @parent_uid = NULL;
+	SET @comment_id = (SELECT `generate_id`());
+	
+    INSERT INTO `comments` (`cuid`,`post_id`,`user_id`,`assembly_code`,`parent_cuid`,`parent_uid`) 
+		VALUES (@comment_id, @post_id, @user_id, 'TPPV', @parent_cuid, @parent_uid);
+	INSERT INTO `content` (`comment_id`, `content_type`, `assembly_number`, `metadata`, `body`, `filename`,`filelink`) VALUES 
+		(@comment_id, 'T', 1, '{}', 'Comment text', NULL, NULL),
+        (@comment_id, 'P', 1, '{"size":"600x600"}', NULL, 'picture1.jpg', NULL),
+        (@comment_id, 'P', 2, '{"size":"600x600"}', NULL, 'picture2.gif', NULL),
+        (@comment_id, 'V', 1, '{"size":"1280M"}', NULL, '', 'youtube.com/126954');
+COMMIT;
+START TRANSACTION;
+	SET @post_id = (SELECT `pid` FROM `posts` ORDER BY RAND() LIMIT 1);SET @user_id = (SELECT `uid` FROM `users` ORDER BY RAND() LIMIT 1);SET @parent_cuid = NULL;SET @parent_uid = NULL;	SET @comment_id = (SELECT `generate_id`());
+    INSERT INTO `comments` (`cuid`,`post_id`,`user_id`,`assembly_code`,`parent_cuid`,`parent_uid`) VALUES (@comment_id, @post_id, @user_id, 'TPPV', @parent_cuid, @parent_uid);
+	INSERT INTO `content` (`comment_id`, `content_type`, `assembly_number`, `metadata`, `body`, `filename`,`filelink`) VALUES 
+		(@comment_id, 'T', 1, '{}', 'Comment text', NULL, NULL),
+        (@comment_id, 'P', 1, '{"size":"600x600"}', NULL, 'picture1.jpg', NULL),
+        (@comment_id, 'P', 2, '{"size":"600x600"}', NULL, 'picture2.gif', NULL),
+        (@comment_id, 'V', 1, '{"size":"1280M"}', NULL, '', 'youtube.com/126954');
+COMMIT;
+START TRANSACTION;
+	SET @post_id = (SELECT `pid` FROM `posts` ORDER BY RAND() LIMIT 1);SET @user_id = (SELECT `uid` FROM `users` ORDER BY RAND() LIMIT 1);SET @parent_cuid = NULL;SET @parent_uid = NULL;	SET @comment_id = (SELECT `generate_id`());
+    INSERT INTO `comments` (`cuid`,`post_id`,`user_id`,`assembly_code`,`parent_cuid`,`parent_uid`) VALUES (@comment_id, @post_id, @user_id, 'TPPV', @parent_cuid, @parent_uid);
+	INSERT INTO `content` (`comment_id`, `content_type`, `assembly_number`, `metadata`, `body`, `filename`,`filelink`) VALUES 
+		(@comment_id, 'T', 1, '{}', 'Comment text', NULL, NULL),
+        (@comment_id, 'P', 1, '{"size":"600x600"}', NULL, 'picture1.jpg', NULL),
+        (@comment_id, 'P', 2, '{"size":"600x600"}', NULL, 'picture2.gif', NULL),
+        (@comment_id, 'V', 1, '{"size":"1280M"}', NULL, '', 'youtube.com/126954');
+COMMIT;
+START TRANSACTION;
+	SET @post_id = (SELECT `pid` FROM `posts` ORDER BY RAND() LIMIT 1);SET @user_id = (SELECT `uid` FROM `users` ORDER BY RAND() LIMIT 1);SET @parent_cuid = (SELECT `cuid` FROM `comments` ORDER BY RAND() LIMIT 1);SET @parent_uid = (SELECT `user_id` FROM `comments` WHERE `cuid` = @parent_cuid);SET @comment_id = (SELECT `generate_id`());
+    INSERT INTO `comments` (`cuid`,`post_id`,`user_id`,`assembly_code`,`parent_cuid`,`parent_uid`) VALUES (@comment_id, @post_id, @user_id, 'TPPV', @parent_cuid, @parent_uid);
+	INSERT INTO `content` (`comment_id`, `content_type`, `assembly_number`, `metadata`, `body`, `filename`,`filelink`) VALUES 
+		(@comment_id, 'T', 1, '{}', 'Comment text', NULL, NULL),
+        (@comment_id, 'P', 1, '{"size":"600x600"}', NULL, 'picture1.jpg', NULL),
+        (@comment_id, 'P', 2, '{"size":"600x600"}', NULL, 'picture2.gif', NULL),
+        (@comment_id, 'V', 1, '{"size":"1280M"}', NULL, '', 'youtube.com/126954');
+COMMIT;
+START TRANSACTION;
+	SET @post_id = (SELECT `pid` FROM `posts` ORDER BY RAND() LIMIT 1);SET @user_id = (SELECT `uid` FROM `users` ORDER BY RAND() LIMIT 1);SET @parent_cuid = (SELECT `cuid` FROM `comments` ORDER BY RAND() LIMIT 1);SET @parent_uid = (SELECT `user_id` FROM `comments` WHERE `cuid` = @parent_cuid);SET @comment_id = (SELECT `generate_id`());
+    INSERT INTO `comments` (`cuid`,`post_id`,`user_id`,`assembly_code`,`parent_cuid`,`parent_uid`) VALUES (@comment_id, @post_id, @user_id, 'TPPV', @parent_cuid, @parent_uid);
+	INSERT INTO `content` (`comment_id`, `content_type`, `assembly_number`, `metadata`, `body`, `filename`,`filelink`) VALUES 
+		(@comment_id, 'T', 1, '{}', 'Comment text', NULL, NULL),
+        (@comment_id, 'P', 1, '{"size":"600x600"}', NULL, 'picture1.jpg', NULL),
+        (@comment_id, 'P', 2, '{"size":"600x600"}', NULL, 'picture2.gif', NULL),
+        (@comment_id, 'V', 1, '{"size":"1280M"}', NULL, '', 'youtube.com/126954');
+COMMIT;
+START TRANSACTION;
+	SET @post_id = (SELECT `pid` FROM `posts` ORDER BY RAND() LIMIT 1);SET @user_id = (SELECT `uid` FROM `users` ORDER BY RAND() LIMIT 1);SET @parent_cuid = (SELECT `cuid` FROM `comments` ORDER BY RAND() LIMIT 1);SET @parent_uid = (SELECT `user_id` FROM `comments` WHERE `cuid` = @parent_cuid);SET @comment_id = (SELECT `generate_id`());
+    INSERT INTO `comments` (`cuid`,`post_id`,`user_id`,`assembly_code`,`parent_cuid`,`parent_uid`) VALUES (@comment_id, @post_id, @user_id, 'TPPV', @parent_cuid, @parent_uid);
+	INSERT INTO `content` (`comment_id`, `content_type`, `assembly_number`, `metadata`, `body`, `filename`,`filelink`) VALUES 
+		(@comment_id, 'T', 1, '{}', 'Comment text', NULL, NULL),
+        (@comment_id, 'P', 1, '{"size":"600x600"}', NULL, 'picture1.jpg', NULL),
+        (@comment_id, 'P', 2, '{"size":"600x600"}', NULL, 'picture2.gif', NULL),
+        (@comment_id, 'V', 1, '{"size":"1280M"}', NULL, '', 'youtube.com/126954');
+COMMIT;
+START TRANSACTION;
+	SET @post_id = (SELECT `pid` FROM `posts` ORDER BY RAND() LIMIT 1);SET @user_id = (SELECT `uid` FROM `users` ORDER BY RAND() LIMIT 1);SET @parent_cuid = (SELECT `cuid` FROM `comments` ORDER BY RAND() LIMIT 1);SET @parent_uid = (SELECT `user_id` FROM `comments` WHERE `cuid` = @parent_cuid);SET @comment_id = (SELECT `generate_id`());
+    INSERT INTO `comments` (`cuid`,`post_id`,`user_id`,`assembly_code`,`parent_cuid`,`parent_uid`) VALUES (@comment_id, @post_id, @user_id, 'TPPV', @parent_cuid, @parent_uid);
+	INSERT INTO `content` (`comment_id`, `content_type`, `assembly_number`, `metadata`, `body`, `filename`,`filelink`) VALUES 
+		(@comment_id, 'T', 1, '{}', 'Comment text', NULL, NULL),
+        (@comment_id, 'P', 1, '{"size":"600x600"}', NULL, 'picture1.jpg', NULL),
+        (@comment_id, 'P', 2, '{"size":"600x600"}', NULL, 'picture2.gif', NULL),
+        (@comment_id, 'V', 1, '{"size":"1280M"}', NULL, '', 'youtube.com/126954');
+COMMIT;
+
+# Просто забиваем таблицу saves псевдослучайными значениями
+CALL `generate_DML4saves`('p');CALL `generate_DML4saves`('p');CALL `generate_DML4saves`('p');CALL `generate_DML4saves`('p');CALL `generate_DML4saves`('p');
+CALL `generate_DML4saves`('p');CALL `generate_DML4saves`('p');CALL `generate_DML4saves`('p');CALL `generate_DML4saves`('p');CALL `generate_DML4saves`('p');
+CALL `generate_DML4saves`('p');CALL `generate_DML4saves`('p');CALL `generate_DML4saves`('p');CALL `generate_DML4saves`('p');CALL `generate_DML4saves`('p');
+CALL `generate_DML4saves`('p');CALL `generate_DML4saves`('p');CALL `generate_DML4saves`('p');CALL `generate_DML4saves`('p');CALL `generate_DML4saves`('p');
+CALL `generate_DML4saves`('p');CALL `generate_DML4saves`('p');CALL `generate_DML4saves`('p');CALL `generate_DML4saves`('p');CALL `generate_DML4saves`('p');
+CALL `generate_DML4saves`('p');CALL `generate_DML4saves`('p');CALL `generate_DML4saves`('p');CALL `generate_DML4saves`('p');CALL `generate_DML4saves`('p');
+CALL `generate_DML4saves`('p');CALL `generate_DML4saves`('p');CALL `generate_DML4saves`('p');CALL `generate_DML4saves`('p');CALL `generate_DML4saves`('p');
+CALL `generate_DML4saves`('c');CALL `generate_DML4saves`('c');CALL `generate_DML4saves`('c');CALL `generate_DML4saves`('c');CALL `generate_DML4saves`('c');
+CALL `generate_DML4saves`('c');CALL `generate_DML4saves`('c');CALL `generate_DML4saves`('c');CALL `generate_DML4saves`('c');CALL `generate_DML4saves`('c');
+CALL `generate_DML4saves`('c');CALL `generate_DML4saves`('c');CALL `generate_DML4saves`('c');CALL `generate_DML4saves`('c');CALL `generate_DML4saves`('c');
+CALL `generate_DML4saves`('c');CALL `generate_DML4saves`('c');CALL `generate_DML4saves`('c');CALL `generate_DML4saves`('c');CALL `generate_DML4saves`('c');
+CALL `generate_DML4saves`('c');CALL `generate_DML4saves`('c');CALL `generate_DML4saves`('c');CALL `generate_DML4saves`('c');CALL `generate_DML4saves`('c');
+CALL `generate_DML4saves`('c');CALL `generate_DML4saves`('c');CALL `generate_DML4saves`('c');CALL `generate_DML4saves`('c');CALL `generate_DML4saves`('c');
+
+# ASSESSMENTS
+#CALL `generate_DML4assessments`('p', 100);
+#CALL `generate_DML4assessments`('c', 300);
+
+#SELECT * FROM `achievements`;
+#SELECT * FROM `assessments`;
+#SELECT * FROM `communities`;
+#SELECT * FROM `communities_users`;
+#SELECT * FROM `ignore_lists`;
+#SELECT * FROM `saves`;
+#SELECT * FROM `subscribers`;
+#SELECT * FROM `user_profiles`;
+#SELECT * FROM `users`;
+#SELECT * FROM `users_achievements`;
+#SELECT * FROM `users_notes`;
+#SELECT * FROM `posts`;
+#SELECT * FROM `comments`;
+#SELECT * FROM `community_profiles`;
+#SELECT * FROM `content`;
+#SELECT * FROM `tags`;
+#SELECT * FROM `tagsets`;
