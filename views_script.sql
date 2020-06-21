@@ -21,7 +21,8 @@ CREATE VIEW `test_subscribers` AS
 		FROM `user_profiles`
 		RIGHT JOIN `subscribers`
 			ON `target_user_id` = `user_id`
-		GROUP BY `target_user_id`;
+		GROUP BY `target_user_id`
+        ORDER BY `CHECK_MESSAGE` = 'ERROR' DESC;
 
 -- Представление-тест того, что триггер увеличения количества членов сообщества работает верно
 DROP VIEW IF EXISTS `test_comm_members`;
@@ -34,7 +35,8 @@ CREATE VIEW `test_comm_members` AS
 		FROM `community_profiles` AS `cp`
 		RIGHT JOIN `communities_users` AS `cu`
 			ON `cp`.`community_id` = `cu`.`community_id`
-		GROUP BY `cu`.`community_id`;
+		GROUP BY `cu`.`community_id`
+        ORDER BY `CHECK_MESSAGE` = 'ERROR' DESC;
 
 -- Выборка-тест того, что триггер увеличения рейтинга поста работает верно
 SELECT `pid`,
@@ -61,20 +63,20 @@ SELECT `cuid`,
 -- Представление-тест того, что триггеры увеличения рейтинга пользователя работают верно и рейтинг автора изменяется в соответствии с оценками пользователей
 DROP VIEW IF EXISTS `test_user_rating`;
 CREATE VIEW `test_user_rating` AS
-SELECT 
-	`author_id` AS `Content Author ID`, 
-	SUM(`All posts rating`) AS `All Content Rating`, 
-    ANY_VALUE(`Union Table`.`User rating`) AS `user rating`,
-    IF(SUM(`All posts rating`) = ANY_VALUE(`User rating`), 'SUCCESS', 'ERROR') AS 'CHECK_MESSAGE'
-    FROM
-		(SELECT `author_id`, SUM(P.`rating`) AS `All posts rating`, U.`rating` AS `User rating`
-			FROM `posts` P
-			JOIN `user_profiles` U ON P.`author_id` = U.`user_id`
+SELECT
+	`author_id` AS `Content Author ID`,
+	SUM(`posts rating`) AS `Rating by Math`,
+	U.`rating` AS `Rating from Us-Pr Table`,
+	IF(SUM(`posts rating`) = U.`rating`, 'SUCCESS', 'ERROR') AS 'CHECK_MESSAGE'
+	FROM
+		(SELECT `author_id`, ROUND(SUM(`rating`),1) AS `posts rating`
+			FROM `posts`
 			GROUP BY (`author_id`)
-		UNION
-		SELECT C.`user_id`, SUM(C.`rating`) / 2 AS `All comments rating`, U.`rating` AS `User rating`
-			FROM `comments` C
-			JOIN `user_profiles` U ON C.`user_id` = U.`user_id`
-			GROUP BY (C.`user_id`)
+		UNION ALL
+		SELECT `user_id`, ROUND(SUM(`rating`) / 2, 1) AS `comments rating`
+			FROM `comments`
+			GROUP BY (`user_id`)
 		) AS `Union Table`
-	GROUP BY (`Content Author ID`);
+	LEFT JOIN `user_profiles` U ON `author_id` = `user_id`
+	GROUP BY (`Content Author ID`)
+	ORDER BY `CHECK_MESSAGE` = 'ERROR' DESC;
